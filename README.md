@@ -2,61 +2,61 @@ This is a basic Python script to simulate tournament stage outcomes for CS:GO ma
 
 Sample output:
 ```
-RESULTS FROM 100,000,000 TOURNAMENT SIMULATIONS
+RESULTS FROM 1,000,000 TOURNAMENT SIMULATIONS
 
-Most likely to advanced:
-1.  FaZe         77.02%
-2.  Liquid       72.55%
-3.  NaVi         71.85%
+Most likely to advance:
+1.  FaZe         76.97%
+2.  Liquid       72.54%
+3.  NaVi         71.83%
 4.  Vitality     66.65%
-5.  Heroic       57.59%
-6.  NiP          53.85%
-7.  Outsiders    51.3%
-8.  Spirit       49.61%
-9.  MOUZ         49.45%
-10. ENCE         46.55%
-11. FURIA        44.86%
-12. Cloud9       44.06%
-13. BIG          39.42%
-14. fnatic       27.7%
-15. Sprout       24.19%
-16. BNE          23.35%
+5.  Heroic       57.57%
+6.  NiP          53.81%
+7.  Outsiders    51.25%
+8.  Spirit       49.6%
+9.  MOUZ         49.47%
+10. ENCE         46.49%
+11. FURIA        44.88%
+12. Cloud9       44.15%
+13. BIG          39.46%
+14. fnatic       27.72%
+15. Sprout       24.2%
+16. BNE          23.4%
 
 Most likely to 3-0:
-1.  FaZe         26.39%
-2.  NaVi         22.16%
-3.  Liquid       21.76%
+1.  FaZe         26.4%
+2.  NaVi         22.18%
+3.  Liquid       21.72%
 4.  Vitality     18.81%
-5.  Heroic       14.05%
-6.  NiP          13.14%
-7.  Spirit       11.9%
+5.  Heroic       14.06%
+6.  NiP          13.16%
+7.  Spirit       11.91%
 8.  Outsiders    11.01%
-9.  MOUZ         10.4%
+9.  MOUZ         10.39%
 10. Cloud9       10.34%
-11. ENCE         9.87%
-12. FURIA        9.07%
-13. BIG          8.05%
-14. fnatic       4.8%
-15. Sprout       4.24%
-16. BNE          4.03%
+11. ENCE         9.82%
+12. FURIA        9.06%
+13. BIG          8.06%
+14. fnatic       4.81%
+15. Sprout       4.28%
+16. BNE          4.0%
 
 Most likely to 0-3:
-1.  BNE          24.98%
-2.  Sprout       24.76%
-3.  fnatic       22.01%
-4.  BIG          14.34%
-5.  FURIA        13.74%
-6.  ENCE         13.49%
-7.  Cloud9       12.57%
-8.  MOUZ         12.37%
-9.  Outsiders    11.27%
-10. Spirit       10.91%
-11. NiP          10.34%
-12. Heroic       9.6%
-13. Vitality     5.75%
+1.  BNE          25.0%
+2.  Sprout       24.77%
+3.  fnatic       22.02%
+4.  BIG          14.35%
+5.  FURIA        13.69%
+6.  ENCE         13.47%
+7.  Cloud9       12.52%
+8.  MOUZ         12.38%
+9.  Outsiders    11.28%
+10. Spirit       10.86%
+11. NiP          10.31%
+12. Heroic       9.64%
+13. Vitality     5.76%
 14. Liquid       5.21%
-15. NaVi         4.9%
-16. FaZe         3.76%
+15. NaVi         4.92%
+16. FaZe         3.81%
 
-Run time: 1659.583 seconds
+Run time: 9.331 seconds
 ```
