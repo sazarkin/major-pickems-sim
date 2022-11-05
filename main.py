@@ -37,12 +37,6 @@ sigma = {
     "gosu": 425,
 }
 
-def Q(first_rating, second_rating, sigma):
-    # calculate the expected result of a team with the first rating matched against
-    # a team with the second rating given a value of sigma (std deviation of ratings)
-    # 0 == draw, >0 == first team wins, <0 == second team wins
-    return (second_rating - first_rating) / (sigma * 2)
-
 def memoize(function):
     # caches function results to return instead of rerunning expensive calculation
     cache = {}
@@ -60,8 +54,10 @@ def memoize(function):
 
 @memoize
 def win_probability(first_team, second_team):
-    # calculate Q across all rating systems and take the mean, use that to calculate win probability
-    return 1 / (1 + 10 ** sum(Q(team_ratings[first_team][s], team_ratings[second_team][s], sigma[s]) for s in rating_systems) / len(rating_systems))
+    # calculate the win probability of a team with the first rating matched against
+    # a team with the second rating given a value of sigma (std deviation of ratings)
+    # for each rating system and take the mean
+    return sum(1 / (1 + 10 ** ((team_ratings[second_team][s] - team_ratings[first_team][s]) / (2 * sigma[s]))) for s in rating_systems) / len(rating_systems)
 
 
 class SwissSystem:
@@ -191,7 +187,7 @@ def simulate_many_tournaments(n):
 if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
     n = 100000
-    k = 1
+    k = 1000
     teams = dict()
     start_time = time.time()
 
@@ -202,29 +198,29 @@ if __name__ == "__main__":
     for team in results[0].keys():
         teams[team] = {key: sum(result[team][key] for result in results) for key in results[0][team].keys()}
 
-    # sort and print results to console
-    # print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
-    # for stat in ["advance", "3-0", "0-3"]:
-    #     teams_copy = teams.copy()
-    #     sorted_teams = []
+    #sort and print results to console
+    print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
+    for stat in ["advance", "3-0", "0-3"]:
+        teams_copy = teams.copy()
+        sorted_teams = []
 
-    #     while teams_copy:
-    #         biggest = {
-    #             "name": "",
-    #             "value": 0
-    #         }
+        while teams_copy:
+            biggest = {
+                "name": "",
+                "value": 0
+            }
 
-    #         for team, data in teams_copy.items():
-    #             if data[stat] > biggest["value"]:
-    #                 biggest["value"] = data[stat]
-    #                 biggest["name"] = team
+            for team, data in teams_copy.items():
+                if data[stat] > biggest["value"]:
+                    biggest["value"] = data[stat]
+                    biggest["name"] = team
             
-    #         sorted_teams += [biggest]
-    #         teams_copy.pop(biggest["name"])
+            sorted_teams += [biggest]
+            teams_copy.pop(biggest["name"])
 
-    #     print(f"\nMost likely to {stat}:")
+        print(f"\nMost likely to {stat}:")
         
-    #     for i, team in enumerate(sorted_teams):
-    #         print(f"{str(i + 1) + '.' :<3} {team['name'] :<12} {round(team['value'] / n * 100, 2)}%")
+        for i, team in enumerate(sorted_teams):
+            print(f"{str(i + 1) + '.' :<3} {team['name'] :<12} {round(team['value'] / n * 100, 2)}%")
 
     print(f"\nRun time: {round(time.time() - start_time, 3)} seconds")
