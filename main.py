@@ -1,7 +1,7 @@
-import statistics
 import random
 import multiprocessing
 import time
+import functools
 
 
 rating_systems = ["hltv", "esl", "gosu"]
@@ -37,18 +37,38 @@ sigma = {
     "gosu": 425,
 }
 
-def win_probability(first_rating, second_rating, sigma):
-    # calculate the probability of a team with the first rating winning against
+def Q(first_rating, second_rating, sigma):
+    # calculate the expected result of a team with the first rating matched against
     # a team with the second rating given a value of sigma (std deviation of ratings)
-    return 1 / (1 + 10 ** ((second_rating - first_rating) / (sigma * 2)))
+    # 0 == draw, >0 == first team wins, <0 == second team wins
+    return (second_rating - first_rating) / (sigma * 2)
 
-def mean_win_probability(first_team, second_team):
-    # calculate win probability across all rating systems and take the mean
-    return sum(win_probability(team_ratings[first_team][s], team_ratings[second_team][s], sigma[s]) for s in rating_systems) / len(rating_systems)
+def memoize(function):
+    # caches function results to return instead of rerunning expensive calculation
+    cache = {}
+
+    @functools.wraps(function)
+    def wrapper(*args):
+        key = str(args)
+
+        if key not in cache:            
+            cache[key] = function(*args)
+
+        return cache[key]
+
+    return wrapper
+
+@memoize
+def win_probability(first_team, second_team):
+    # calculate Q across all rating systems and take the mean, use that to calculate win probability
+    return 1 / (1 + 10 ** sum(Q(team_ratings[first_team][s], team_ratings[second_team][s], sigma[s]) for s in rating_systems) / len(rating_systems))
 
 
 class SwissSystem:
     def __init__(self):
+        self.clear()
+
+    def clear(self):
         self.finished = dict()
         self.teams = {
             "FaZe":         {"seed": 1,     "wins": 0,  "losses": 0},
@@ -74,40 +94,51 @@ class SwissSystem:
         is_bo3 = self.teams[first_team]["wins"] == 2 or self.teams[first_team]["losses"] == 2
 
         # simulate outcome
-        win_probability = mean_win_probability(first_team, second_team)
+        probability = win_probability(first_team, second_team)
         if is_bo3:
-            first_map = win_probability > random.random()
-            second_map = win_probability > random.random()
+            first_map = probability > random.random()
+            second_map = probability > random.random()
 
             if first_map != second_map:
                 # 1-1 goes to third map
-                first_team_win = win_probability > random.random()
+                first_team_win = probability > random.random()
             else:
                 # 2-0 no third map
                 first_team_win = first_map
         else:
-            first_team_win = win_probability > random.random()
+            first_team_win = probability > random.random()
 
         # update team records
-        self.teams[first_team]["wins"] += 1 if first_team_win else 0
-        self.teams[first_team]["losses"] += 0 if first_team_win else 1
-        self.teams[second_team]["wins"] += 0 if first_team_win else 1
-        self.teams[second_team]["losses"] += 1 if first_team_win else 0
+        if first_team_win:
+            self.teams[first_team]["wins"] += 1
+            self.teams[second_team]["losses"] += 1
+        else:
+            self.teams[first_team]["losses"] += 1
+            self.teams[second_team]["wins"] += 1
 
         # advance/eliminate teams
-        for team in [first_team, second_team]:
-            if self.teams[team]["wins"] == 3 or self.teams[team]["losses"] == 3:
-                self.finished[team] = self.teams.pop(team)
+        if is_bo3:
+            for team in [first_team, second_team]:
+                if self.teams[team]["wins"] == 3 or self.teams[team]["losses"] == 3:
+                    self.finished[team] = self.teams.pop(team)
 
     def simulate_round(self):
         # group teams with same record together
-        even_teams = [team for team in self.teams.keys() if self.teams[team]["wins"] == self.teams[team]["losses"]]
-        pos_teams = [team for team in self.teams.keys() if self.teams[team]["wins"] > self.teams[team]["losses"]]
-        neg_teams = [team for team in self.teams.keys() if self.teams[team]["wins"] < self.teams[team]["losses"]]
+        even_teams = []
+        pos_teams = []
+        neg_teams = []
+
+        for team in self.teams.keys():
+            if self.teams[team]["wins"] > self.teams[team]["losses"]:
+                pos_teams += [team]
+            elif self.teams[team]["wins"] < self.teams[team]["losses"]:
+                neg_teams += [team]
+            else:
+                even_teams += [team]
 
         # match up teams within each group according to seed
         for group in [even_teams, pos_teams, neg_teams]:
-            for i in range(len(group) // 2):
+            while group:
                 highest_seed = group[0]
                 lowest_seed = group[-1]
 
@@ -125,6 +156,7 @@ class SwissSystem:
     
     def simulate_tournament(self):
         # simulate whole tournament stage
+        self.clear()
         while self.teams:
             self.simulate_round()
 
@@ -132,36 +164,34 @@ class SwissSystem:
 def simulate_many_tournaments(n):
     # simulate tournament outcomes 'n' times and record statistics
     teams = dict()
+    ss = SwissSystem()
 
     for team_name in team_ratings.keys():
         teams[team_name] = {
-            "advanced": 0,
-            "eliminated": 0,
+            "advance": 0,
             "3-0": 0,
             "0-3": 0
         }
 
     for i in range(n):
-        ss = SwissSystem()
         ss.simulate_tournament()
 
         for team in ss.finished.keys():
             if ss.finished[team]["wins"] == 3:
                 if ss.finished[team]["losses"] == 0:
                     teams[team]["3-0"] += 1
-                teams[team]["advanced"] += 1
+                teams[team]["advance"] += 1
             else:
                 if ss.finished[team]["wins"] == 0:
                     teams[team]["0-3"] += 1
-                teams[team]["eliminated"] += 1
 
     return teams
 
 
 if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
-    n = 1000000
-    k = 1000
+    n = 100000
+    k = 1
     teams = dict()
     start_time = time.time()
 
@@ -173,28 +203,28 @@ if __name__ == "__main__":
         teams[team] = {key: sum(result[team][key] for result in results) for key in results[0][team].keys()}
 
     # sort and print results to console
-    print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
-    for stat in ["advanced", "3-0", "0-3"]:
-        teams_copy = teams.copy()
-        sorted_teams = []
+    # print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
+    # for stat in ["advance", "3-0", "0-3"]:
+    #     teams_copy = teams.copy()
+    #     sorted_teams = []
 
-        while teams_copy:
-            biggest = {
-                "name": "",
-                "value": 0
-            }
+    #     while teams_copy:
+    #         biggest = {
+    #             "name": "",
+    #             "value": 0
+    #         }
 
-            for team, data in teams_copy.items():
-                if data[stat] > biggest["value"]:
-                    biggest["value"] = data[stat]
-                    biggest["name"] = team
+    #         for team, data in teams_copy.items():
+    #             if data[stat] > biggest["value"]:
+    #                 biggest["value"] = data[stat]
+    #                 biggest["name"] = team
             
-            sorted_teams += [biggest]
-            teams_copy.pop(biggest["name"])
+    #         sorted_teams += [biggest]
+    #         teams_copy.pop(biggest["name"])
 
-        print(f"\nMost likely to {stat}:")
+    #     print(f"\nMost likely to {stat}:")
         
-        for i, team in enumerate(sorted_teams):
-            print(f"{str(i + 1) + '.' :<3} {team['name'] :<12} {round(team['value'] / n * 100, 2)}%")
+    #     for i, team in enumerate(sorted_teams):
+    #         print(f"{str(i + 1) + '.' :<3} {team['name'] :<12} {round(team['value'] / n * 100, 2)}%")
 
     print(f"\nRun time: {round(time.time() - start_time, 3)} seconds")
