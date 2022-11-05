@@ -1,6 +1,6 @@
 This is a basic Python script to simulate tournament stage outcomes for CS:GO major tournaments, used to assist decision making for tournament pickems. The swiss system is initialised given each team's actual seed, and the tournament rounds are progressed with randomised match outcomes. Each team's ranking on HLTV, ESL, and GosuGamers is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
 
-Results from 100 million tournament simulations:
+Sample output:
 ```
 RESULTS FROM 100,000,000 TOURNAMENT SIMULATIONS
 
