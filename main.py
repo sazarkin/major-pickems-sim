@@ -186,7 +186,7 @@ def simulate_many_tournaments(n):
 
 if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
-    n = 100000
+    n = 1000000
     k = 1000
     teams = dict()
     start_time = time.time()
