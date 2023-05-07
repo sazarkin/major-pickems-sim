@@ -2,12 +2,13 @@ import random
 import multiprocessing
 import time
 from functools import cache
+from pprint import pprint
 
 
 stat_keys = ["advance", "3-0", "0-3"]
 rating_systems = ["hltv", "esl", "gosu"]
 
-team_ratings = {
+team_data = {
     "Monte":        {"seed": 1,     "hltv": 113,   "esl": 182,     "gosu": 1218},
     "paiN":         {"seed": 2,     "hltv": 178,   "esl": 442,     "gosu": 1232},
     "G2":           {"seed": 3,     "hltv": 697,   "esl": 1322,    "gosu": 1553},
@@ -27,9 +28,9 @@ team_ratings = {
 }
 
 # shape hltv and esl ratings to be more normally distributed
-for team in team_ratings.keys():
-    team_ratings[team]["hltv"] = (team_ratings[team]["hltv"] ** 0.5) * 10
-    team_ratings[team]["esl"] = (team_ratings[team]["esl"] ** 0.5) * 10
+for team in team_data.keys():
+    team_data[team]["hltv"] = (team_data[team]["hltv"] ** 0.5) * 10
+    team_data[team]["esl"] = (team_data[team]["esl"] ** 0.5) * 10
 
 # empirically tuned to have approx 80% probability of the favourites advancing the tournament
 sigma = {
@@ -43,17 +44,17 @@ def win_probability(first_team, second_team):
     # calculate the win probability of a team with the first rating matched against
     # a team with the second rating given a value of sigma (std deviation of ratings)
     # for each rating system and take the median
-    return sorted([1 / (1 + 10 ** ((team_ratings[second_team][s] - team_ratings[first_team][s]) / (2 * sigma[s]))) for s in rating_systems])[len(rating_systems) // 2]
+    return sorted([1 / (1 + 10 ** ((team_data[second_team][s] - team_data[first_team][s]) / (2 * sigma[s]))) for s in rating_systems])[len(rating_systems) // 2]
 
 
 class SwissSystem:
     def __init__(self):
-        self.teams = {team: {"seed": team_ratings[team]["seed"], "wins": 0, "losses": 0} for team in team_ratings.keys()}
+        self.teams = {team: {"seed": team_data[team]["seed"], "wins": 0, "losses": 0} for team in team_data.keys()}
         self.finished = dict()
 
     def clear(self):
         self.teams |= self.finished
-        self.teams = {team: {"seed": team_ratings[team]["seed"], "wins": 0, "losses": 0} for team in team_ratings.keys()}
+        self.teams = {team: {"seed": team_data[team]["seed"], "wins": 0, "losses": 0} for team in team_data.keys()}
         self.finished = dict()
 
     def simulate_match(self, first_team, second_team):
@@ -91,35 +92,27 @@ class SwissSystem:
 
     def simulate_round(self):
         # group teams with same record together
+        # each group is a list of tuples: (team_seed, team_name)
         even_teams = []
         pos_teams = []
         neg_teams = []
 
         for team in self.teams.keys():
             if self.teams[team]["wins"] > self.teams[team]["losses"]:
-                pos_teams += [team]
+                pos_teams.append((team_data[team]["seed"], team))
             elif self.teams[team]["wins"] < self.teams[team]["losses"]:
-                neg_teams += [team]
+                neg_teams.append((team_data[team]["seed"], team))
             else:
-                even_teams += [team]
+                even_teams.append((team_data[team]["seed"], team))
 
-        # match up teams within each group according to seed
+        # sort group by seed and simulate match outcomes
         for group in [even_teams, pos_teams, neg_teams]:
+            group.sort(key=lambda x: x[0])
+
             while group:
-                highest_seed = group[0]
-                lowest_seed = group[-1]
-
-                for team in group:
-                    if self.teams[team]["seed"] > self.teams[highest_seed]["seed"]:
-                        highest_seed = team
-                    if self.teams[team]["seed"] < self.teams[lowest_seed]["seed"]:
-                        lowest_seed = team
-
-                group.remove(highest_seed)
-                group.remove(lowest_seed)
-
-                # simulate match outcome
-                self.simulate_match(highest_seed, lowest_seed)
+                self.simulate_match(group[0][1], group[-1][1])
+                group.remove(group[0])
+                group.remove(group[-1])
 
     def simulate_tournament(self):
         # simulate whole tournament stage
@@ -131,7 +124,7 @@ class SwissSystem:
 def simulate_many_tournaments(n):
     # simulate tournament outcomes 'n' times and record statistics
     ss = SwissSystem()
-    teams = {team: {stat: 0 for stat in stat_keys} for team in team_ratings.keys()}
+    teams = {team: {stat: 0 for stat in stat_keys} for team in team_data.keys()}
 
     for i in range(n):
         ss.simulate_tournament()
@@ -152,7 +145,7 @@ if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
     n = 1_000_000
     k = 16
-    teams = {team: {stat: 0 for stat in stat_keys} for team in team_ratings.keys()}
+    teams = {team: {stat: 0 for stat in stat_keys} for team in team_data.keys()}
 
     start_time = time.time()
 
