@@ -1,29 +1,29 @@
 import random
 import multiprocessing
 import time
-import functools
-from pprint import pprint
+from functools import cache
 
 
+stat_keys = ["advance", "3-0", "0-3"]
 rating_systems = ["hltv", "esl", "gosu"]
 
 team_ratings = {
-    "Monte":        {"hltv": 113,   "esl": 182,     "gosu": 1218},
-    "paiN":         {"hltv": 178,   "esl": 442,     "gosu": 1232},
-    "G2":           {"hltv": 697,   "esl": 1322,    "gosu": 1553},
-    "GamerLegion":  {"hltv": 78,    "esl": 107,     "gosu": 1184},
-    "FORZE":        {"hltv": 195,   "esl": 419,     "gosu": 1240},
-    "Apeks":        {"hltv": 75,    "esl": 80,      "gosu": 1185},
-    "NiP":          {"hltv": 216,   "esl": 350,     "gosu": 1262},
-    "OG":           {"hltv": 239,   "esl": 292,     "gosu": 1293},
-    "ENCE":         {"hltv": 290,   "esl": 559,     "gosu": 1313},
-    "MOUZ":         {"hltv": 239,   "esl": 409,     "gosu": 1256},
-    "Liquid":       {"hltv": 418,   "esl": 634,     "gosu": 1358},
-    "Grayhound":    {"hltv": 101,   "esl": 95,      "gosu": 1066},
-    "Complexity":   {"hltv": 161,   "esl": 301,     "gosu": 1158},
-    "TheMongolz":   {"hltv": 111,   "esl": 191,     "gosu": 1137},
-    "Fluxo":        {"hltv": 45,    "esl": 130,     "gosu": 1149},
-    "FaZe":         {"hltv": 680,   "esl": 1675,    "gosu": 1436},
+    "Monte":        {"seed": 1,     "hltv": 113,   "esl": 182,     "gosu": 1218},
+    "paiN":         {"seed": 2,     "hltv": 178,   "esl": 442,     "gosu": 1232},
+    "G2":           {"seed": 3,     "hltv": 697,   "esl": 1322,    "gosu": 1553},
+    "GamerLegion":  {"seed": 4,     "hltv": 78,    "esl": 107,     "gosu": 1184},
+    "FORZE":        {"seed": 5,     "hltv": 195,   "esl": 419,     "gosu": 1240},
+    "Apeks":        {"seed": 6,     "hltv": 75,    "esl": 80,      "gosu": 1185},
+    "NiP":          {"seed": 7,     "hltv": 216,   "esl": 350,     "gosu": 1262},
+    "OG":           {"seed": 8,     "hltv": 239,   "esl": 292,     "gosu": 1293},
+    "ENCE":         {"seed": 9,     "hltv": 290,   "esl": 559,     "gosu": 1313},
+    "MOUZ":         {"seed": 10,    "hltv": 239,   "esl": 409,     "gosu": 1256},
+    "Liquid":       {"seed": 11,    "hltv": 418,   "esl": 634,     "gosu": 1358},
+    "Grayhound":    {"seed": 12,    "hltv": 101,   "esl": 95,      "gosu": 1066},
+    "Complexity":   {"seed": 13,    "hltv": 161,   "esl": 301,     "gosu": 1158},
+    "TheMongolz":   {"seed": 14,    "hltv": 111,   "esl": 191,     "gosu": 1137},
+    "Fluxo":        {"seed": 15,    "hltv": 45,    "esl": 130,     "gosu": 1149},
+    "FaZe":         {"seed": 16,    "hltv": 680,   "esl": 1675,    "gosu": 1436},
 }
 
 # shape hltv and esl ratings to be more normally distributed
@@ -38,7 +38,7 @@ sigma = {
     "gosu": 425,
 }
 
-@functools.cache
+@cache
 def win_probability(first_team, second_team):
     # calculate the win probability of a team with the first rating matched against
     # a team with the second rating given a value of sigma (std deviation of ratings)
@@ -48,28 +48,13 @@ def win_probability(first_team, second_team):
 
 class SwissSystem:
     def __init__(self):
-        self.clear()
+        self.teams = {team: {"seed": team_ratings[team]["seed"], "wins": 0, "losses": 0} for team in team_ratings.keys()}
+        self.finished = dict()
 
     def clear(self):
+        self.teams |= self.finished
+        self.teams = {team: {"seed": team_ratings[team]["seed"], "wins": 0, "losses": 0} for team in team_ratings.keys()}
         self.finished = dict()
-        self.teams = {
-            "Monte":        {"seed": 1,     "wins": 0,  "losses": 0},
-            "paiN":         {"seed": 2,     "wins": 0,  "losses": 0},
-            "G2":           {"seed": 3,     "wins": 0,  "losses": 0},
-            "GamerLegion":  {"seed": 4,     "wins": 0,  "losses": 0},
-            "FORZE":        {"seed": 5,     "wins": 0,  "losses": 0},
-            "Apeks":        {"seed": 6,     "wins": 0,  "losses": 0},
-            "NiP":          {"seed": 7,     "wins": 0,  "losses": 0},
-            "OG":           {"seed": 8,     "wins": 0,  "losses": 0},
-            "ENCE":         {"seed": 9,     "wins": 0,  "losses": 0},
-            "MOUZ":         {"seed": 10,    "wins": 0,  "losses": 0},
-            "Liquid":       {"seed": 11,    "wins": 0,  "losses": 0},
-            "Grayhound":    {"seed": 12,    "wins": 0,  "losses": 0},
-            "Complexity":   {"seed": 13,    "wins": 0,  "losses": 0},
-            "TheMongolz":   {"seed": 14,    "wins": 0,  "losses": 0},
-            "Fluxo":        {"seed": 15,    "wins": 0,  "losses": 0},
-            "FaZe":         {"seed": 16,    "wins": 0,  "losses": 0},
-        }
 
     def simulate_match(self, first_team, second_team):
         # BO3 if match is for advancement/elimination
@@ -145,15 +130,8 @@ class SwissSystem:
 
 def simulate_many_tournaments(n):
     # simulate tournament outcomes 'n' times and record statistics
-    teams = dict()
     ss = SwissSystem()
-
-    for team_name in team_ratings.keys():
-        teams[team_name] = {
-            "advance": 0,
-            "3-0": 0,
-            "0-3": 0
-        }
+    teams = {team: {stat: 0 for stat in stat_keys} for team in team_ratings.keys()}
 
     for i in range(n):
         ss.simulate_tournament()
@@ -174,14 +152,7 @@ if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
     n = 1_000_000
     k = 16
-    teams = dict()
-
-    for team_name in team_ratings.keys():
-        teams[team_name] = {
-            "advance": 0,
-            "3-0": 0,
-            "0-3": 0
-        }
+    teams = {team: {stat: 0 for stat in stat_keys} for team in team_ratings.keys()}
 
     start_time = time.time()
 
@@ -191,20 +162,17 @@ if __name__ == "__main__":
 
         for result in results:
             for team in teams.keys():
-                for stat in ["advance", "3-0", "0-3"]:
+                for stat in stat_keys:
                     teams[team][stat] += result[team][stat]
 
     # sort and print results
     print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
-    for stat in ["advance", "3-0", "0-3"]:
+    for stat in stat_keys:
         teams_copy = teams.copy()
         sorted_teams = []
 
         while teams_copy:
-            biggest = {
-                "name": "",
-                "value": 0
-            }
+            biggest = {"name": "", "value": 0}
 
             for team, data in teams_copy.items():
                 if data[stat] > biggest["value"]:
