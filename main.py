@@ -42,8 +42,8 @@ sigma = {
 def win_probability(first_team, second_team):
     # calculate the win probability of a team with the first rating matched against
     # a team with the second rating given a value of sigma (std deviation of ratings)
-    # for each rating system and take the mean
-    return sum(1 / (1 + 10 ** ((team_ratings[second_team][s] - team_ratings[first_team][s]) / (2 * sigma[s]))) for s in rating_systems) / len(rating_systems)
+    # for each rating system and take the median
+    return sorted([1 / (1 + 10 ** ((team_ratings[second_team][s] - team_ratings[first_team][s]) / (2 * sigma[s]))) for s in rating_systems])[len(rating_systems) // 2]
 
 
 class SwissSystem:
