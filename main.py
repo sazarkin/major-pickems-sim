@@ -49,11 +49,9 @@ def win_probability(first_team, second_team):
 
 class SwissSystem:
     def __init__(self):
-        self.teams = {team: {"seed": team_data[team]["seed"], "wins": 0, "losses": 0} for team in team_data.keys()}
-        self.finished = dict()
+        self.clear()
 
     def clear(self):
-        self.teams |= self.finished
         self.teams = {team: {"seed": team_data[team]["seed"], "wins": 0, "losses": 0} for team in team_data.keys()}
         self.finished = dict()
 
@@ -115,8 +113,11 @@ class SwissSystem:
                 group.remove(group[-1])
 
     def simulate_tournament(self):
+        # clear data from previous simulation
+        if len(self.finished):
+            self.clear()
+
         # simulate whole tournament stage
-        self.clear()
         while self.teams:
             self.simulate_round()
 
