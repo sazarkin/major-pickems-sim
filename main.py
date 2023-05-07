@@ -7,22 +7,22 @@ import functools
 rating_systems = ["hltv", "esl", "gosu"]
 
 team_ratings = {
-    "FaZe":         {"hltv": 819,   "esl": 1552,    "gosu": 1511},
-    "Vitality":     {"hltv": 756,   "esl": 1510,    "gosu": 1460},
-    "Liquid":       {"hltv": 741,   "esl": 1374,    "gosu": 1358},
-    "NaVi":         {"hltv": 660,   "esl": 1302,    "gosu": 1556},
-    "Cloud9":       {"hltv": 595,   "esl": 824,     "gosu": 1275},
-    "Heroic":       {"hltv": 476,   "esl": 536,     "gosu": 1382},
-    "Outsiders":    {"hltv": 431,   "esl": 476,     "gosu": 1332},
-    "MOUZ":         {"hltv": 403,   "esl": 506,     "gosu": 1352},
-    "FURIA":        {"hltv": 381,   "esl": 454,     "gosu": 1296},
-    "NiP":          {"hltv": 336,   "esl": 539,     "gosu": 1379},
-    "ENCE":         {"hltv": 322,   "esl": 434,     "gosu": 1305},
-    "Spirit":       {"hltv": 322,   "esl": 395,     "gosu": 1332},
-    "BIG":          {"hltv": 204,   "esl": 296,     "gosu": 1296},
-    "fnatic":       {"hltv": 156,   "esl": 223,     "gosu": 1254},
-    "BNE":          {"hltv": 122,   "esl": 105,     "gosu": 1186},
-    "Sprout":       {"hltv": 92,    "esl": 169,     "gosu": 1152},
+    "Monte":        {"hltv": 113,   "esl": 182,     "gosu": 1218},
+    "paiN":         {"hltv": 178,   "esl": 442,     "gosu": 1232},
+    "G2":           {"hltv": 697,   "esl": 1322,    "gosu": 1553},
+    "GamerLegion":  {"hltv": 78,    "esl": 107,     "gosu": 1184},
+    "FORZE":        {"hltv": 195,   "esl": 419,     "gosu": 1240},
+    "Apeks":        {"hltv": 75,    "esl": 80,      "gosu": 1185},
+    "NiP":          {"hltv": 216,   "esl": 350,     "gosu": 1262},
+    "OG":           {"hltv": 239,   "esl": 292,     "gosu": 1293},
+    "ENCE":         {"hltv": 290,   "esl": 559,     "gosu": 1313},
+    "MOUZ":         {"hltv": 239,   "esl": 409,     "gosu": 1256},
+    "Liquid":       {"hltv": 418,   "esl": 634,     "gosu": 1358},
+    "Grayhound":    {"hltv": 101,   "esl": 95,      "gosu": 1066},
+    "Complexity":   {"hltv": 161,   "esl": 301,     "gosu": 1158},
+    "TheMongolz":   {"hltv": 111,   "esl": 191,     "gosu": 1137},
+    "Fluxo":        {"hltv": 45,    "esl": 130,     "gosu": 1149},
+    "FaZe":         {"hltv": 680,   "esl": 1675,    "gosu": 1436},
 }
 
 # shape hltv and esl ratings to be more normally distributed
@@ -37,22 +37,7 @@ sigma = {
     "gosu": 425,
 }
 
-def memoize(function):
-    # caches function results to return instead of rerunning expensive calculation
-    cache = {}
-
-    @functools.wraps(function)
-    def wrapper(*args):
-        key = str(args)
-
-        if key not in cache:            
-            cache[key] = function(*args)
-
-        return cache[key]
-
-    return wrapper
-
-@memoize
+@functools.cache
 def win_probability(first_team, second_team):
     # calculate the win probability of a team with the first rating matched against
     # a team with the second rating given a value of sigma (std deviation of ratings)
@@ -67,22 +52,22 @@ class SwissSystem:
     def clear(self):
         self.finished = dict()
         self.teams = {
-            "FaZe":         {"seed": 1,     "wins": 0,  "losses": 0},
-            "NaVi":         {"seed": 2,     "wins": 0,  "losses": 0},
-            "NiP":          {"seed": 3,     "wins": 0,  "losses": 0},
-            "ENCE":         {"seed": 4,     "wins": 0,  "losses": 0},
-            "Sprout":       {"seed": 5,     "wins": 0,  "losses": 0},
-            "Heroic":       {"seed": 6,     "wins": 0,  "losses": 0},
-            "Spirit":       {"seed": 7,     "wins": 0,  "losses": 0},
-            "Liquid":       {"seed": 8,     "wins": 0,  "losses": 0},
-            "MOUZ":         {"seed": 9,     "wins": 0,  "losses": 0},
-            "BNE":          {"seed": 10,    "wins": 0,  "losses": 0},
-            "Outsiders":    {"seed": 11,    "wins": 0,  "losses": 0},
-            "BIG":          {"seed": 12,    "wins": 0,  "losses": 0},
-            "FURIA":        {"seed": 13,    "wins": 0,  "losses": 0},
-            "fnatic":       {"seed": 14,    "wins": 0,  "losses": 0},
-            "Vitality":     {"seed": 15,    "wins": 0,  "losses": 0},
-            "Cloud9":       {"seed": 16,    "wins": 0,  "losses": 0},
+            "Monte":        {"seed": 1,     "wins": 0,  "losses": 0},
+            "paiN":         {"seed": 2,     "wins": 0,  "losses": 0},
+            "G2":           {"seed": 3,     "wins": 0,  "losses": 0},
+            "GamerLegion":  {"seed": 4,     "wins": 0,  "losses": 0},
+            "FORZE":        {"seed": 5,     "wins": 0,  "losses": 0},
+            "Apeks":        {"seed": 6,     "wins": 0,  "losses": 0},
+            "NiP":          {"seed": 7,     "wins": 0,  "losses": 0},
+            "OG":           {"seed": 8,     "wins": 0,  "losses": 0},
+            "ENCE":         {"seed": 9,     "wins": 0,  "losses": 0},
+            "MOUZ":         {"seed": 10,    "wins": 0,  "losses": 0},
+            "Liquid":       {"seed": 11,    "wins": 0,  "losses": 0},
+            "Grayhound":    {"seed": 12,    "wins": 0,  "losses": 0},
+            "Complexity":   {"seed": 13,    "wins": 0,  "losses": 0},
+            "TheMongolz":   {"seed": 14,    "wins": 0,  "losses": 0},
+            "Fluxo":        {"seed": 15,    "wins": 0,  "losses": 0},
+            "FaZe":         {"seed": 16,    "wins": 0,  "losses": 0},
         }
 
     def simulate_match(self, first_team, second_team):
@@ -143,13 +128,13 @@ class SwissSystem:
                         highest_seed = team
                     if self.teams[team]["seed"] < self.teams[lowest_seed]["seed"]:
                         lowest_seed = team
-                
+
                 group.remove(highest_seed)
                 group.remove(lowest_seed)
 
                 # simulate match outcome
                 self.simulate_match(highest_seed, lowest_seed)
-    
+
     def simulate_tournament(self):
         # simulate whole tournament stage
         self.clear()
@@ -193,7 +178,7 @@ if __name__ == "__main__":
 
     with multiprocessing.Pool() as p:
         results = p.map(simulate_many_tournaments, [n // k] * k)
-    
+
     # concatenate results from all processes
     for team in results[0].keys():
         teams[team] = {key: sum(result[team][key] for result in results) for key in results[0][team].keys()}
@@ -214,12 +199,12 @@ if __name__ == "__main__":
                 if data[stat] > biggest["value"]:
                     biggest["value"] = data[stat]
                     biggest["name"] = team
-            
+
             sorted_teams += [biggest]
             teams_copy.pop(biggest["name"])
 
         print(f"\nMost likely to {stat}:")
-        
+
         for i, team in enumerate(sorted_teams):
             print(f"{str(i + 1) + '.' :<3} {team['name'] :<12} {round(team['value'] / n * 100, 2)}%")
 
