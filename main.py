@@ -2,6 +2,7 @@ import random
 import multiprocessing
 import time
 import functools
+from pprint import pprint
 
 
 rating_systems = ["hltv", "esl", "gosu"]
@@ -171,19 +172,29 @@ def simulate_many_tournaments(n):
 
 if __name__ == "__main__":
     # run 'n' simulations total, across 'k' processes
-    n = 1000000
-    k = 1000
+    n = 1_000_000
+    k = 16
     teams = dict()
+
+    for team_name in team_ratings.keys():
+        teams[team_name] = {
+            "advance": 0,
+            "3-0": 0,
+            "0-3": 0
+        }
+
     start_time = time.time()
 
-    with multiprocessing.Pool() as p:
-        results = p.map(simulate_many_tournaments, [n // k] * k)
+    with multiprocessing.Pool(k) as p:
+        processes = [p.apply_async(simulate_many_tournaments, [n // k]) for _ in range(k)]
+        results = [process.get() for process in processes]
 
-    # concatenate results from all processes
-    for team in results[0].keys():
-        teams[team] = {key: sum(result[team][key] for result in results) for key in results[0][team].keys()}
+        for result in results:
+            for team in teams.keys():
+                for stat in ["advance", "3-0", "0-3"]:
+                    teams[team][stat] += result[team][stat]
 
-    #sort and print results to console
+    # sort and print results
     print(f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS")
     for stat in ["advance", "3-0", "0-3"]:
         teams_copy = teams.copy()
