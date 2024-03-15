@@ -140,7 +140,7 @@ class Simulation:
 
     def batch(self, n: int) -> dict[Team, dict[str, int]]:
         """Run batch of 'n' simulation iterations for given data and return results."""
-        results = {team: {stat: 0 for stat in ["advance", "3-0", "0-3"]} for team in self.teams}
+        results = {team: {stat: 0 for stat in ["3-0", "3-1 or 3-2", "0-3"]} for team in self.teams}
 
         for _ in range(n):
             ss = SwissSystem(
@@ -158,7 +158,7 @@ class Simulation:
                     if record.losses == 0:
                         results[team]["3-0"] += 1
                     else:
-                        results[team]["advance"] += 1
+                        results[team]["3-1 or 3-2"] += 1
                 else:
                     if record.wins == 0:
                         results[team]["0-3"] += 1
