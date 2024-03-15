@@ -1,65 +1,96 @@
-# major-pickems-sim
+# Major Pick'ems Simulator
 
-This is a basic Python script to simulate tournament stage outcomes for CS:GO major tournaments, used to assist decision making for tournament pickems. The swiss system is initialised given each team's actual seed, and the tournament rounds are progressed with randomised match outcomes. Each team's ranking on HLTV, ESL, and GosuGamers is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
+This is a basic Python script to simulate tournament stage outcomes for Counter-Strike major tournaments, used to assist decision making for pick'ems. The swiss system follows the seeding rules and format [documented by Valve](https://github.com/ValveSoftware/counter-strike/blob/main/major-supplemental-rulebook.md#seeding), and the tournament rounds are progressed with randomised match outcomes. Each team's ranking from various sources is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
 
-Sample output:
+### Command line interface
+
+```
+usage: python simulate.py [-h] -f F [-n N] [-k K]
+
+options:
+  -h, --help  show this help message and exit
+  -f F        path to input data (.json)
+  -n N        number of iterations to run
+  -k K        number of cores to use
+```
+
+### JSON data format
+
+```
+{
+    "systems": {
+        <system name>: <transfer function>
+    },
+    "sigma": {
+        <system name>: <standard deviation for rating>
+    },
+    "teams": {
+        <team name>: {
+            "seed": <initial seeding>,
+            <system name>: <system rating>
+        }
+    }
+}
+```
+
+### Sample output
 
 ```text
 RESULTS FROM 1,000,000 TOURNAMENT SIMULATIONS
 
-Most likely to advance:
-1.  FaZe         88.32%
-2.  G2           87.75%
-3.  Liquid       71.33%
-4.  ENCE         60.63%
-5.  FORZE        54.75%
-6.  MOUZ         52.36%
-7.  OG           52.08%
-8.  NiP          51.87%
-9.  paiN         50.35%
-10. Complexity   46.64%
-11. Monte        32.76%
-12. GamerLegion  31.37%
-13. TheMongolz   31.14%
-14. Fluxo        31.03%
-15. Apeks        28.81%
-16. Grayhound    28.81%
-
 Most likely to 3-0:
-1.  G2           33.49%
-2.  FaZe         32.02%
-3.  Liquid       22.33%
-4.  ENCE         15.05%
-5.  MOUZ         12.12%
-6.  FORZE        12.06%
-7.  OG           11.41%
-8.  NiP          11.15%
-9.  paiN         10.25%
-10. Complexity   9.45%
-11. Monte        5.39%
-12. GamerLegion  5.37%
-13. Fluxo        5.27%
-14. Grayhound    5.17%
-15. TheMongolz   4.82%
-16. Apeks        4.65%
+1.  Cloud9           27.0%
+2.  ENCE             25.4%
+3.  HEROIC           22.8%
+4.  Apeks            21.1%
+5.  Eternal Fire     20.7%
+6.  FURIA            20.0%
+7.  SAW              12.3%
+8.  9Pandas           9.7%
+9.  The MongolZ       7.3%
+10. AMKAL             5.6%
+11. Imperial          5.4%
+12. Lynn Vision       5.2%
+13. KOI               5.0%
+14. ECSTATIC          4.8%
+15. paiN              4.4%
+16. Legacy            3.3%
+
+Most likely to 3-1 or 3-2:
+1.  Cloud9           52.4%
+2.  Eternal Fire     52.1%
+3.  ENCE             51.9%
+4.  HEROIC           51.0%
+5.  Apeks            50.5%
+6.  FURIA            48.8%
+7.  SAW              40.5%
+8.  9Pandas          36.7%
+9.  The MongolZ      35.2%
+10. Imperial         29.1%
+11. Lynn Vision      28.3%
+12. ECSTATIC         27.9%
+13. AMKAL            26.6%
+14. paiN             25.0%
+15. KOI              24.4%
+16. Legacy           19.4%
 
 Most likely to 0-3:
-1.  Apeks        21.95%
-2.  Grayhound    21.52%
-3.  TheMongolz   20.87%
-4.  Fluxo        19.5%
-5.  GamerLegion  18.89%
-6.  Monte        18.8%
-7.  Complexity   11.87%
-8.  NiP          10.94%
-9.  OG           10.84%
-10. MOUZ         10.24%
-11. paiN         9.47%
-12. FORZE        9.0%
-13. ENCE         7.86%
-14. Liquid       5.01%
-15. FaZe         1.68%
-16. G2           1.57%
+1.  Legacy           25.6%
+2.  paiN             21.0%
+3.  ECSTATIC         20.0%
+4.  KOI              19.2%
+5.  Lynn Vision      18.8%
+6.  Imperial         18.6%
+7.  AMKAL            17.5%
+8.  The MongolZ      14.2%
+9.  9Pandas          11.1%
+10. SAW               9.4%
+11. FURIA             4.7%
+12. Eternal Fire      4.5%
+13. Apeks             4.4%
+14. HEROIC            4.1%
+15. ENCE              3.7%
+16. Cloud9            3.2%
 
-Run time: 6.853 seconds
+Run time: 17.15 seconds
 ```
