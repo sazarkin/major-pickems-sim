@@ -65,17 +65,22 @@ class SwissSystem:
         # calculate single map win probability
         p = win_probability(team_a, team_b, self.sigma)
 
-        # for best of three, probability of team a winning => p(2-0) + p(2-1) + p(3-0)
+        # simulate match outcome
         if is_bo3:
-            # probability of 2-0 for team a -> p(2-0) = p * p
-            # probability of 2-1 for team a -> p(2-1) = p * p * (1 - p)
-            # probability of 3-0 for team a -> p(3-0) = p * p * p
-            # p * p + p * p * (1 - p) + p * p * p => 2p^2 - p^3
-            p2 = p * p
-            p = 2 * p2 - p2 * p
+            first_map = p > random()
+            second_map = p > random()
 
-        # simulate match outcome and update team records
-        if p > random():
+            if first_map != second_map:
+                # 1-1 goes to third map
+                team_a_win = p > random()
+            else:
+                # 2-0 no third map
+                team_a_win = first_map
+        else:
+            team_a_win = p > random()
+
+        # update team records
+        if team_a_win:
             self.records[team_a].wins += 1
             self.records[team_b].losses += 1
         else:
