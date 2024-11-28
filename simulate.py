@@ -1,13 +1,13 @@
+import json
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from functools import cache, reduce
-from random import random
-from statistics import median
-from pathlib import Path
 from multiprocessing import Pool
 from os import cpu_count
-from argparse import ArgumentParser
+from pathlib import Path
+from random import random
+from statistics import median
 from time import perf_counter_ns
-import json
 
 
 @dataclass(frozen=True)
@@ -35,15 +35,18 @@ class Record:
 
 @cache
 def win_probability(a: Team, b: Team, sigma: tuple[int]) -> float:
-    """Calculate the probability of team 'a' beating team 'b' for given set of rating system sigma values."""
-    # calculate the win probability for given team ratings and value of sigma (std deviation of ratings)
-    # for each rating system (assumed to be elo based and normally distributed) and take the median
-    return median(1 / (1 + 10 ** ((b.rating[i] - a.rating[i]) / (2 * sigma[i]))) for i in range(len(sigma)))
+    """Calculate the probability of team 'a' beating team 'b' for given sigma values."""
+    # calculate the win probability for given team ratings and value of sigma (std deviation of
+    # ratings) for each rating system (assumed to be elo based and normally distributed) and
+    # take the median
+    return median(
+        1 / (1 + 10 ** ((b.rating[i] - a.rating[i]) / (2 * sigma[i]))) for i in range(len(sigma))
+    )
 
 
 @dataclass
 class SwissSystem:
-    sigma: dict[str, int]
+    sigma: tuple[int]
     records: dict[Team, Record]
     faced: dict[Team, set[Team]]
     remaining: set[Team]
@@ -54,7 +57,7 @@ class SwissSystem:
         return (
             -self.records[team].diff,
             -sum(self.records[opp].diff for opp in self.faced[team]),
-            team.seed
+            team.seed,
         )
 
     def simulate_match(self, team_a: Team, team_b: Team) -> None:
@@ -69,13 +72,7 @@ class SwissSystem:
         if is_bo3:
             first_map = p > random()
             second_map = p > random()
-
-            if first_map != second_map:
-                # 1-1 goes to third map
-                team_a_win = p > random()
-            else:
-                # 2-0 no third map
-                team_a_win = first_map
+            team_a_win = p > random() if first_map != second_map else first_map
         else:
             team_a_win = p > random()
 
@@ -95,14 +92,15 @@ class SwissSystem:
         if is_bo3:
             for team in [team_a, team_b]:
                 if self.records[team].wins == 3 or self.records[team].losses == 3:
-                    self.finished.add(self.remaining.remove(team))
+                    self.remaining.remove(team)
+                    self.finished.add(team)
 
     def simulate_round(self) -> None:
         """Simulate round of matches."""
         even_teams, pos_teams, neg_teams = [], [], []
 
         # group teams with the same record together and sort by mid-round seeding
-        for team in sorted(list(self.remaining), key=self.seeding):
+        for team in sorted(self.remaining, key=self.seeding):
             if self.records[team].diff > 0:
                 pos_teams.append(team)
             elif self.records[team].diff < 0:
@@ -119,7 +117,7 @@ class SwissSystem:
         for group in [pos_teams, even_teams, neg_teams]:
             half = len(group) // 2
 
-            for (a, b) in zip(group[:half], reversed(group[half:])):
+            for a, b in zip(group[:half], reversed(group[half:])):
                 self.simulate_match(a, b)
 
     def simulate_tournament(self) -> None:
@@ -132,16 +130,20 @@ class Simulation:
     sigma: tuple[int]
     teams: set[Team]
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path) -> None:
         """Parse data loaded in from .json file."""
-        with open(filepath, mode="r") as file:
+        with open(filepath) as file:
             data = json.load(file)
 
         self.sigma = (*data["sigma"].values(),)
-        self.teams = set(Team(
-            team_k, team_v["seed"],
-            tuple((eval(sys_v))(team_v[sys_k]) for sys_k, sys_v in data["systems"].items()),
-        ) for team_k, team_v in data["teams"].items())
+        self.teams = {
+            Team(
+                team_k,
+                team_v["seed"],
+                tuple((eval(sys_v))(team_v[sys_k]) for sys_k, sys_v in data["systems"].items()),  # noqa: S307
+            )
+            for team_k, team_v in data["teams"].items()
+        }
 
     def batch(self, n: int) -> dict[Team, dict[str, int]]:
         """Run batch of 'n' simulation iterations for given data and return results."""
@@ -164,9 +166,8 @@ class Simulation:
                         results[team]["3-0"] += 1
                     else:
                         results[team]["3-1 or 3-2"] += 1
-                else:
-                    if record.wins == 0:
-                        results[team]["0-3"] += 1
+                elif record.wins == 0:
+                    results[team]["0-3"] += 1
 
         return results
 
@@ -178,22 +179,26 @@ class Simulation:
 
         def _f(acc: dict, res: dict) -> dict:
             for team, result in res.items():
-                for k, v in result.items():
-                    acc[team][k] += v
+                for key, val in result.items():
+                    acc[team][key] += val
             return acc
 
         return reduce(_f, results)
 
 
-def format_results(results: dict[Team, dict[str, int]], n: int, run_time: float) -> str:
+def format_results(results: dict[Team, dict[str, int]], n: int, run_time: float) -> list[str]:
     """Formats simulation results and run time parameters into readable string."""
     out = [f"RESULTS FROM {n:,} TOURNAMENT SIMULATIONS"]
 
-    for stat in list(results.values())[0].keys():
+    for stat in next(iter(results.values())):
         out.append(f"\nMost likely to {stat}:")
 
-        for i, (team, result) in enumerate(sorted(results.items(), key=lambda tup: tup[1][stat], reverse=True)):
-            out.append(f"{str(i + 1) + '.':<3} {team.name:<15} {round(result[stat] / n * 100, 1):>5}%")
+        for i, (team, result) in enumerate(
+            sorted(results.items(), key=lambda tup: tup[1][stat], reverse=True),
+        ):
+            out.append(
+                f"{str(i + 1) + '.':<3} {team.name:<15} {round(result[stat] / n * 100, 1):>5}%",
+            )
 
     out.append(f"\nRun time: {run_time:.2f} seconds")
     return out
