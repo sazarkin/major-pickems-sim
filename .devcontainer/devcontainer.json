@@ -1,12 +1,19 @@
 {
-  "dockerComposeFile": "./docker-compose.yml",
-  "service": "python",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "containerUser": "dev",
+  "remoteUser": "dev",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/dev/src,type=bind,consistency=cached",
   "workspaceFolder": "/home/dev/src",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-python.autopep8"
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml",
+        "fill-labs.dependi"
       ]
     }
   }

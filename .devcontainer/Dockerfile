@@ -1,12 +1,13 @@
-FROM ndunnett/python:latest
+FROM ghcr.io/astral-sh/uv:bookworm-slim
+ARG USERNAME=dev
+ENV UV_LINK_MODE=copy
 
 # install dependencies
+ARG DEBIAN_FRONTEND=noninteractive
 RUN set -eux; \
-    DEBIAN_FRONTEND="noninteractive"; \
     apt-get update; \
     apt-get install -y wget git zsh; \
     rm -rf /var/lib/apt/lists/*
-ARG USERNAME=dev
 
 # create user
 RUN set -eux; \
@@ -14,6 +15,10 @@ RUN set -eux; \
     mkdir -p "/home/$USERNAME/src"; \
     chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 USER "$USERNAME"
+WORKDIR "/home/$USERNAME/src"
+
+# make venv
+RUN set -eux; uv venv .venv
 
 # entrypoint
-CMD ["sleep", "infinity"]
+CMD sleep infinity
