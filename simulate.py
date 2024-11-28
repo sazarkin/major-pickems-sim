@@ -1,26 +1,34 @@
+from __future__ import annotations
+
 import json
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from functools import cache, reduce
 from multiprocessing import Pool
 from os import cpu_count
-from pathlib import Path
 from random import random
 from statistics import median
 from time import perf_counter_ns
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
-@dataclass(frozen=True)
+@dataclass
 class Team:
     name: str
     seed: int
-    rating: tuple[int]
+    rating: tuple[int, ...]
 
     def __repr__(self) -> str:
         return str(self.name)
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def __eq__(self, other: Team) -> bool:  # type: ignore
+        return self.name == other.name
 
 
 @dataclass
@@ -34,7 +42,7 @@ class Record:
 
 
 @cache
-def win_probability(a: Team, b: Team, sigma: tuple[int]) -> float:
+def win_probability(a: Team, b: Team, sigma: tuple[int, ...]) -> float:
     """Calculate the probability of team 'a' beating team 'b' for given sigma values."""
     # calculate the win probability for given team ratings and value of sigma (std deviation of
     # ratings) for each rating system (assumed to be elo based and normally distributed) and
@@ -46,7 +54,7 @@ def win_probability(a: Team, b: Team, sigma: tuple[int]) -> float:
 
 @dataclass
 class SwissSystem:
-    sigma: tuple[int]
+    sigma: tuple[int, ...]
     records: dict[Team, Record]
     faced: dict[Team, set[Team]]
     remaining: set[Team]
@@ -127,7 +135,7 @@ class SwissSystem:
 
 
 class Simulation:
-    sigma: tuple[int]
+    sigma: tuple[int, ...]
     teams: set[Team]
 
     def __init__(self, filepath: Path) -> None:
