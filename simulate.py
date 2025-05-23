@@ -81,9 +81,14 @@ class SwissSystem:
 
         # simulate match outcome
         if is_bo3:
-            first_map = p > random.random()
-            second_map = p > random.random()
-            team_a_win = p > random.random() if first_map != second_map else first_map
+            # Simulate proper BO3 series where first to 2 wins takes the match
+            a_wins, b_wins = 0, 0
+            while a_wins < 2 and b_wins < 2:
+                if p > random.random():
+                    a_wins += 1
+                else:
+                    b_wins += 1
+            team_a_win = a_wins > b_wins
         else:
             team_a_win = p > random.random()
 
@@ -206,9 +211,15 @@ class Simulation:
         self, n: int, k: int, predictions
     ) -> Tuple[dict[Team, dict[str, int]], int]:
         """Run 'n' simulation iterations across 'k' processes and return results."""
+        batch_size = n // k
+        remainder = n % k
+
         with Pool(k) as pool:
             futures = [
-                pool.apply_async(self.batch, [n // k, predictions]) for _ in range(k)
+                pool.apply_async(
+                    self.batch, [batch_size + (1 if i < remainder else 0), predictions]
+                )
+                for i in range(k)
             ]
             results = [future.get() for future in futures]
 
@@ -228,7 +239,8 @@ class Simulation:
                 scores[i].extend(score)
 
         percentages = [
-            (sum(1 for score in score_list if score > 5) / len(score_list)) * 100
+            (sum(1 for score in score_list if score >= 6) / len(score_list))
+            * 100  # 6+ correct out of 10 possible
             for score_list in scores
         ]
 
@@ -256,32 +268,31 @@ def format_results(
 
 
 def mutate_prediction(prediction: dict, teams: list) -> dict:
-    predition_teams = []
-    predition_teams.extend(prediction["3-0"])
-    predition_teams.extend(prediction["3-1 or 3-2"])
-    predition_teams.extend(prediction["0-3"])
+    prediction_teams = []
+    prediction_teams.extend(prediction["3-0"])
+    prediction_teams.extend(prediction["3-1 or 3-2"])
+    prediction_teams.extend(prediction["0-3"])
 
-    for team in teams:
-        if team not in predition_teams:
-            predition_teams.append(team)
+    # Ensure we include all teams exactly once
+    prediction_teams += [team for team in teams if team not in prediction_teams]
 
     random_group = random.choice(["3-0", "3-1 or 3-2", "0-3"])
     random_team_a = random.choice(prediction[random_group])
     random_team_b = random.choice(
-        [t for t in predition_teams if t not in prediction[random_group]]
+        [t for t in prediction_teams if t not in prediction[random_group]]
     )
 
-    index_a = predition_teams.index(random_team_a)
-    index_b = predition_teams.index(random_team_b)
-    predition_teams[index_a], predition_teams[index_b] = (
-        predition_teams[index_b],
-        predition_teams[index_a],
+    index_a = prediction_teams.index(random_team_a)
+    index_b = prediction_teams.index(random_team_b)
+    prediction_teams[index_a], prediction_teams[index_b] = (
+        prediction_teams[index_b],
+        prediction_teams[index_a],
     )
 
     return {
-        "3-0": predition_teams[:2],
-        "3-1 or 3-2": predition_teams[2:8],
-        "0-3": predition_teams[8:10],
+        "3-0": prediction_teams[:2],
+        "3-1 or 3-2": prediction_teams[2:8],
+        "0-3": prediction_teams[8:10],
     }
 
 
@@ -316,8 +327,11 @@ if __name__ == "__main__":
     data = json.load(open(args.f))
     teams = list(data["teams"].keys())
     predictions = []
-    prediction_hashes = set([hash_prediction(p) for p in predictions])
-    prediction_hashes_copy = prediction_hashes.copy()
+    # Generate predictions first then make copy of hashes
+    prediction_hashes = set()
+    prediction_hashes_copy = (
+        set()
+    )  # Initialize empty, will fill after generating predictions
 
     # Generate unique random predictions
     for _ in range(args.p):
@@ -327,7 +341,7 @@ if __name__ == "__main__":
             prediction = {
                 "3-0": shuffled[:2],
                 "3-1 or 3-2": shuffled[2:8],
-                "0-3": shuffled[8:10]
+                "0-3": shuffled[8:10],
             }
             ph = hash_prediction(prediction)
             if ph not in prediction_hashes:
