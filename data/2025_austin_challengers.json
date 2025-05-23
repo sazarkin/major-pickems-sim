@@ -1,0 +1,110 @@
+{
+    "systems": {
+        "valve": "lambda x: x",
+        "hltv": "lambda x: (x ** 0.5) * 10",
+        "gosu": "lambda x: x"
+    },
+    "sigma": {
+        "valve": 600,
+        "hltv": 135,
+        "gosu": 300
+    },
+    "teams": {
+        "Complexity": {
+            "seed": 1,
+            "valve": 1542,
+            "hltv": 392,
+            "gosu": 1542
+        },
+        "HEROIC": {
+            "seed": 2,
+            "valve": 1424,
+            "hltv": 377,
+            "gosu": 1424
+        },
+        "B8": {
+            "seed": 3,
+            "valve": 1227,
+            "hltv": 350,
+            "gosu": 1227
+        },
+        "BetBoom": {
+            "seed": 4,
+            "valve": 1120,
+            "hltv": 335,
+            "gosu": 1120
+        },
+        "TYLOO": {
+            "seed": 5,
+            "valve": 1117,
+            "hltv": 334,
+            "gosu": 1117
+        },
+        "Lynn Vision": {
+            "seed": 6,
+            "valve": 1114,
+            "hltv": 334,
+            "gosu": 1114
+        },
+        "Wildcard": {
+            "seed": 7,
+            "valve": 1113,
+            "hltv": 334,
+            "gosu": 1113
+        },
+        "FlyQuest": {
+            "seed": 8,
+            "valve": 1094,
+            "hltv": 331,
+            "gosu": 1094
+        },
+        "OG": {
+            "seed": 9,
+            "valve": 1082,
+            "hltv": 329,
+            "gosu": 1082
+        },
+        "Chinggis Warriors": {
+            "seed": 10,
+            "valve": 1077,
+            "hltv": 328,
+            "gosu": 1077
+        },
+        "Imperial": {
+            "seed": 11,
+            "valve": 1071,
+            "hltv": 327,
+            "gosu": 1071
+        },
+        "Nemiga": {
+            "seed": 12,
+            "valve": 1060,
+            "hltv": 326,
+            "gosu": 1060
+        },
+        "NRG": {
+            "seed": 13,
+            "valve": 1030,
+            "hltv": 321,
+            "gosu": 1030
+        },
+        "Legacy": {
+            "seed": 14,
+            "valve": 967,
+            "hltv": 311,
+            "gosu": 967
+        },
+        "Metizport": {
+            "seed": 15,
+            "valve": 964,
+            "hltv": 311,
+            "gosu": 964
+        },
+        "Fluxo": {
+            "seed": 16,
+            "valve": 902,
+            "hltv": 300,
+            "gosu": 902
+        }
+    }
+}

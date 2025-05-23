@@ -315,80 +315,29 @@ if __name__ == "__main__":
 
     data = json.load(open(args.f))
     teams = list(data["teams"].keys())
-    predictions = [
-        {
-            "3-0": ["G2", "Vitality"],
-            "3-1 or 3-2": [
-                "The MongolZ",
-                "HEROIC",
-                "Spirit",
-                "MOUZ",
-                "FaZe",
-                "Natus Vincere",
-            ],
-            "0-3": ["GamerLegion", "MIBR"],
-        },
-        {
-            "3-0": ["G2", "Vitality"],
-            "3-1 or 3-2": [
-                "The MongolZ",
-                "HEROIC",
-                "Spirit",
-                "MOUZ",
-                "FaZe",
-                "Natus Vincere",
-            ],
-            "0-3": ["MIBR", "Wildcard"],
-        },
-        {
-            "3-0": ["G2", "Natus Vincere"],
-            "3-1 or 3-2": [
-                "The MongolZ",
-                "HEROIC",
-                "Spirit",
-                "MOUZ",
-                "FaZe",
-                "Vitality",
-            ],
-            "0-3": ["GamerLegion", "MIBR"],
-        },
-        {
-            "3-0": ["G2", "Natus Vincere"],
-            "3-1 or 3-2": [
-                "The MongolZ",
-                "HEROIC",
-                "Spirit",
-                "MOUZ",
-                "FaZe",
-                "Vitality",
-            ],
-            "0-3": ["MIBR", "Wildcard"],
-        },
-        {
-            "3-0": ["Natus Vincere", "Vitality"],
-            "3-1 or 3-2": ["G2", "HEROIC", "FaZe", "MOUZ", "The MongolZ", "Spirit"],
-            "0-3": ["MIBR", "GamerLegion"],
-        },
-    ]
+    predictions = []
     prediction_hashes = set([hash_prediction(p) for p in predictions])
     prediction_hashes_copy = prediction_hashes.copy()
 
+    # Generate unique random predictions
     for _ in range(args.p):
-        base_prediction = random.choice(predictions)
-        for i in range(10):
-            prediction = base_prediction.copy()
-            for _ in range(random.randint(1, 5)):
-                prediction = mutate_prediction(prediction, teams)
-            prediction_hash = hash_prediction(prediction)
-            if prediction_hash not in prediction_hashes:
-                prediction_hashes.add(prediction_hash)
+        while True:
+            # Create fresh random prediction
+            shuffled = random.sample(teams, len(teams))
+            prediction = {
+                "3-0": shuffled[:2],
+                "3-1 or 3-2": shuffled[2:8],
+                "0-3": shuffled[8:10]
+            }
+            ph = hash_prediction(prediction)
+            if ph not in prediction_hashes:
+                prediction_hashes.add(ph)
                 predictions.append(prediction)
                 break
 
     start = perf_counter_ns()
     results, scores = Simulation(args.f).run(args.n, args.k, predictions)
     run_time = (perf_counter_ns() - start) / 1_000_000_000
-    # print("\n".join(format_results(results, args.n, run_time)))
 
     prediction_results = list(zip(scores, predictions))
     prediction_results.sort(key=lambda x: x[0], reverse=True)
