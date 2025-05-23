@@ -5,13 +5,15 @@ This is a basic Python script to simulate tournament stage outcomes for Counter-
 ### Command line interface
 
 ```
-usage: python simulate.py [-h] -f F [-n N] [-k K]
+usage: python simulate.py [-h] -f F [-n N] [-k K] [-p P] [-s S]
 
 options:
   -h, --help  show this help message and exit
   -f F        path to input data (.json)
   -n N        number of iterations to run
   -k K        number of cores to use
+  -p P        number of predictions to run
+  -s S        random seed
 ```
 
 ### JSON data format
