@@ -1,6 +1,7 @@
 {
     "systems": {
-        "valve": "lambda x: x"
+        "valve": "lambda x: x",
+        "hltv": "lambda x: (x ** 0.5) * 10"
     },
     "sigma": {
         "valve": 600
