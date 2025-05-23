@@ -1,0 +1,74 @@
+{
+  "systems": {
+    "valve": "lambda x: x"
+  },
+  "sigma": {
+    "valve": 600
+  },
+  "teams": {
+    "G2": {
+      "seed": 1,
+      "valve": 1964
+    },
+    "Natus Vincere": {
+      "seed": 2,
+      "valve": 1842
+    },
+    "Vitality": {
+      "seed": 3,
+      "valve": 1834
+    },
+    "Spirit": {
+      "seed": 4,
+      "valve": 1824
+    },
+    "MOUZ": {
+      "seed": 5,
+      "valve": 1703
+    },
+    "FaZe": {
+      "seed": 6,
+      "valve": 1636
+    },
+    "HEROIC": {
+      "seed": 7,
+      "valve": 1637
+    },
+    "3DMAX": {
+      "seed": 8,
+      "valve": 1496
+    },
+    "The MongolZ": {
+      "seed": 9,
+      "valve": 1767
+    },
+    "Liquid": {
+      "seed": 10,
+      "valve": 1602
+    },
+    "GamerLegion": {
+      "seed": 11,
+      "valve": 1371
+    },
+    "FURIA": {
+      "seed": 12,
+      "valve": 1560
+    },
+    "paiN": {
+      "seed": 13,
+      "valve": 1491
+    },
+    "Wildcard": {
+      "seed": 14,
+      "valve": 1350
+    },
+    "BIG": {
+      "seed": 15,
+      "valve": 1463
+    },
+    "MIBR": {
+      "seed": 16,
+      "valve": 1373
+    }
+  }
+}
