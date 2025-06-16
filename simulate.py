@@ -71,6 +71,17 @@ class SwissSystem:
             team.seed,
         )
 
+    def reset(self) -> None:
+        """Reset state for new simulation."""
+        for record in self.records.values():
+            record.wins = 0
+            record.losses = 0
+        for team_set in self.faced.values():
+            team_set.clear()
+        self.remaining.clear()
+        self.remaining.update(self.records.keys())
+        self.finished.clear()
+
     def simulate_match(self, team_a: Team, team_b: Team) -> None:
         """Simulate singular match."""
         # BO3 if match is for advancement/elimination
@@ -174,35 +185,49 @@ class Simulation:
         }
         scores = [[] for _ in predictions]
 
-        for _ in range(n):
-            ss = SwissSystem(
-                self.sigma,
-                {team: Record(0, 0) for team in self.teams},
-                {team: set() for team in self.teams},
-                set(self.teams),
-                set(),
-            )
+        # Pre-convert prediction team lists to sets for faster intersection
+        prediction_sets = [
+            {
+                "3-0": set(p["3-0"]),
+                "3-1 or 3-2": set(p["3-1 or 3-2"]),
+                "0-3": set(p["0-3"]),
+            }
+            for p in predictions
+        ]
 
+        # Instantiate SwissSystem once, outside the loop
+        ss = SwissSystem(
+            self.sigma,
+            {team: Record(0, 0) for team in self.teams},
+            {team: set() for team in self.teams},
+            set(self.teams),
+            set(),
+        )
+
+        for _ in range(n):
+            ss.reset()  # Reset state instead of re-creating
             ss.simulate_tournament()
 
+            outcome_groups = defaultdict(set)
             for team, record in ss.records.items():
                 if record.wins == 3:
                     if record.losses == 0:
                         results[team]["3-0"] += 1
+                        outcome_groups["3-0"].add(team.name)
                     else:
                         results[team]["3-1 or 3-2"] += 1
-                elif record.wins == 0:
+                        outcome_groups["3-1 or 3-2"].add(team.name)
+                elif record.losses == 3:
                     results[team]["0-3"] += 1
+                    outcome_groups["0-3"].add(team.name)
 
-            for i, prediction in enumerate(predictions):
-                score = 0
-                for team, record in ss.records.items():
-                    key = f"{record.wins}-{record.losses}"
-                    if key == "3-1" or key == "3-2":
-                        key = "3-1 or 3-2"
-                    key_teams = prediction.get(key)
-                    if key_teams and team.name in key_teams:
-                        score += 1
+            # Optimized scoring using set intersections
+            for i, p_sets in enumerate(prediction_sets):
+                score = len(outcome_groups["3-0"].intersection(p_sets["3-0"]))
+                score += len(
+                    outcome_groups["3-1 or 3-2"].intersection(p_sets["3-1 or 3-2"])
+                )
+                score += len(outcome_groups["0-3"].intersection(p_sets["0-3"]))
                 scores[i].append(score)
 
         return results, scores
