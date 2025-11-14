@@ -1,0 +1,91 @@
+{
+    "systems": {
+        "valve": "lambda x: x",
+        "hltv": "lambda x: (x ** 0.5) * 10"
+    },
+    "sigma": {
+        "valve": 600
+    },
+    "teams": {
+        "Legacy": {
+            "seed": 1,
+            "valve": 1744,
+            "hltv": 175
+        },
+        "FaZe Clan": {
+            "seed": 2,
+            "valve": 1587,
+            "hltv": 186
+        },
+        "B8": {
+            "seed": 3,
+            "valve": 1535,
+            "hltv": 92
+        },
+        "GamerLegion": {
+            "seed": 4,
+            "valve": 1533,
+            "hltv": 111
+        },
+        "Fnatic": {
+            "seed": 5,
+            "valve": 1416,
+            "hltv": 63
+        },
+        "PARIVISION": {
+            "seed": 6,
+            "valve": 1401,
+            "hltv": 41
+        },
+        "Ninjas in Pyjamas": {
+            "seed": 7,
+            "valve": 1297,
+            "hltv": 55
+        },
+        "Imperial Esports": {
+            "seed": 8,
+            "valve": 1305,
+            "hltv": 24
+        },
+        "FlyQuest": {
+            "seed": 9,
+            "valve": 1280,
+            "hltv": 40
+        },
+        "Lynn Vision Gaming": {
+            "seed": 10,
+            "valve": 1336,
+            "hltv": 67
+        },
+        "M80": {
+            "seed": 11,
+            "valve": 1327,
+            "hltv": 67
+        },
+        "Fluxo": {
+            "seed": 12,
+            "valve": 1271,
+            "hltv": 29
+        },
+        "RED Canids": {
+            "seed": 13,
+            "valve": 1070,
+            "hltv": 13
+        },
+        "The Huns Esports": {
+            "seed": 14,
+            "valve": 1111,
+            "hltv": 11
+        },
+        "NRG": {
+            "seed": 15,
+            "valve": 1305,
+            "hltv": 32
+        },
+        "Rare Atom": {
+            "seed": 16,
+            "valve": 1112,
+            "hltv": 9
+        }
+    }
+}
