@@ -177,13 +177,13 @@ class Simulation:
 
     def batch(
         self, n: int, predictions: list[dict]
-    ) -> Tuple[dict[Team, dict[str, int]], list[int]]:
+    ) -> Tuple[dict[Team, dict[str, int]], list[Tuple[int, int]]]:
         """Run batch of 'n' simulation iterations for given data and return results."""
         results = {
             team: {stat: 0 for stat in ["3-0", "3-1 or 3-2", "0-3"]}
             for team in self.teams
         }
-        scores = [[] for _ in predictions]
+        success_counts = [0] * len(predictions)
 
         # Pre-convert prediction team lists to sets for faster intersection
         prediction_sets = [
@@ -228,13 +228,14 @@ class Simulation:
                     outcome_groups["3-1 or 3-2"].intersection(p_sets["3-1 or 3-2"])
                 )
                 score += len(outcome_groups["0-3"].intersection(p_sets["0-3"]))
-                scores[i].append(score)
+                if score >= 6:
+                    success_counts[i] += 1
 
-        return results, scores
+        return results, list(zip(success_counts, [n] * len(predictions)))
 
     def run(
         self, n: int, k: int, predictions
-    ) -> Tuple[dict[Team, dict[str, int]], int]:
+    ) -> Tuple[dict[Team, dict[str, int]], list[float]]:
         """Run 'n' simulation iterations across 'k' processes and return results."""
         batch_size = n // k
         remainder = n % k
@@ -258,15 +259,22 @@ class Simulation:
             _f, map(lambda x: x[0], results), defaultdict(lambda: defaultdict(int))
         )
 
-        scores = [[] for _ in predictions]
-        for _, batch_scores in results:
-            for i, score in enumerate(batch_scores):
-                scores[i].extend(score)
+        # Aggregate success counts and simulation counts per prediction
+        combined_success_counts = [0] * len(predictions)
+        combined_simulation_counts = [0] * len(predictions)
+
+        for _, batch_stats in results:
+            for i, (success_count, sim_count) in enumerate(batch_stats):
+                combined_success_counts[i] += success_count
+                combined_simulation_counts[i] += sim_count
 
         percentages = [
-            (sum(1 for score in score_list if score >= 6) / len(score_list))
-            * 100  # 6+ correct out of 10 possible
-            for score_list in scores
+            (
+                (combined_success_counts[i] / combined_simulation_counts[i]) * 100
+                if combined_simulation_counts[i] > 0
+                else 0.0
+            )
+            for i in range(len(predictions))
         ]
 
         return combined_results, percentages
