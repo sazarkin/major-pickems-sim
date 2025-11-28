@@ -1,0 +1,91 @@
+{
+    "systems": {
+        "valve": "lambda x: x",
+        "hltv": "lambda x: (x ** 0.5) * 10"
+    },
+    "sigma": {
+        "valve": 600
+    },
+    "teams": {
+        "Aurora Gaming": {
+            "seed": 1,
+            "valve": 1815,
+            "hltv": 275
+        },
+        "Natus Vincere": {
+            "seed": 2,
+            "valve": 1706,
+            "hltv": 262
+        },
+        "Team Liquid": {
+            "seed": 3,
+            "valve": 1711,
+            "hltv": 146
+        },
+        "3DMAX": {
+            "seed": 4,
+            "valve": 1606,
+            "hltv": 197
+        },
+        "Astralis": {
+            "seed": 5,
+            "valve": 1655,
+            "hltv": 208
+        },
+        "TYLOO": {
+            "seed": 6,
+            "valve": 1321,
+            "hltv": 64
+        },
+        "MIBR": {
+            "seed": 7,
+            "valve": 1320,
+            "hltv": 31
+        },
+        "Passion UA": {
+            "seed": 8,
+            "valve": 1387,
+            "hltv": 76
+        },
+        "M80": {
+            "seed": 9,
+            "valve": 1421,
+            "hltv": 66
+        },
+        "FlyQuest": {
+            "seed": 10,
+            "valve": 1421,
+            "hltv": 44
+        },
+        "B8": {
+            "seed": 11,
+            "valve": 1586,
+            "hltv": 73
+        },
+        "Fnatic": {
+            "seed": 12,
+            "valve": 1444,
+            "hltv": 62
+        },
+        "Ninjas in Pyjamas": {
+            "seed": 13,
+            "valve": 1386,
+            "hltv": 40
+        },
+        "PARIVISION": {
+            "seed": 14,
+            "valve": 1495,
+            "hltv": 28
+        },
+        "Imperial Esports": {
+            "seed": 15,
+            "valve": 1329,
+            "hltv": 22
+        },
+        "FaZe Clan": {
+            "seed": 16,
+            "valve": 1560,
+            "hltv": 186
+        }
+    }
+}
