@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"math/bits"
 	"math/rand"
 	"os"
 	"runtime"
@@ -21,6 +22,7 @@ type Team struct {
 	Name   string
 	Seed   int
 	Rating []int
+	Index  int
 }
 
 func (t *Team) String() string { return t.Name }
@@ -34,47 +36,44 @@ func (r *Record) Diff() int { return r.Wins - r.Losses }
 
 type SwissSystem struct {
 	Sigma     []int
-	Records   map[*Team]*Record
-	Faced     map[*Team]map[*Team]bool
-	Remaining map[*Team]bool
-	Finished  map[*Team]bool
+	Teams     []*Team   // original team list in index order
+	Records   []*Record // indexed by Team.Index
+	Faced     [][]int   // indexed by Team.Index, holds opponent indices
+	Remaining []bool    // indexed by Team.Index
+	Finished  []bool    // indexed by Team.Index
 	rng       *rand.Rand
 }
 
 func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
-	records := make(map[*Team]*Record)
-	faced := make(map[*Team]map[*Team]bool)
-	remaining := make(map[*Team]bool)
-	for _, t := range teams {
-		records[t] = &Record{}
-		faced[t] = make(map[*Team]bool)
-		remaining[t] = true
+	n := len(teams)
+	records := make([]*Record, n)
+	faced := make([][]int, n)
+	remaining := make([]bool, n)
+	finished := make([]bool, n)
+	for i := 0; i < n; i++ {
+		records[i] = &Record{}
+		faced[i] = make([]int, 0, 3)
+		remaining[i] = true
 	}
 	return &SwissSystem{
 		Sigma:     sigma,
+		Teams:     teams,
 		Records:   records,
 		Faced:     faced,
 		Remaining: remaining,
-		Finished:  make(map[*Team]bool),
+		Finished:  finished,
 		rng:       rng,
 	}
 }
 
 func (ss *SwissSystem) Reset() {
-	for _, rec := range ss.Records {
-		rec.Wins = 0
-		rec.Losses = 0
+	for i := range ss.Records {
+		ss.Records[i].Wins = 0
+		ss.Records[i].Losses = 0
+		ss.Faced[i] = ss.Faced[i][:0]
+		ss.Remaining[i] = true
+		ss.Finished[i] = false
 	}
-	for _, m := range ss.Faced {
-		for k := range m {
-			delete(m, k)
-		}
-	}
-	ss.Remaining = make(map[*Team]bool)
-	for t := range ss.Records {
-		ss.Remaining[t] = true
-	}
-	ss.Finished = make(map[*Team]bool)
 }
 
 func winProb(a, b *Team, sigma []int) float64 {
@@ -93,18 +92,21 @@ func winProb(a, b *Team, sigma []int) float64 {
 }
 
 func (ss *SwissSystem) seeding(t *Team) (int, int, int) {
-	diff := -ss.Records[t].Diff()
+	idx := t.Index
+	diff := -ss.Records[idx].Diff()
 	buch := 0
-	for opp := range ss.Faced[t] {
-		buch += ss.Records[opp].Diff()
+	for _, oppIdx := range ss.Faced[idx] {
+		buch += ss.Records[oppIdx].Diff()
 	}
 	buch = -buch
 	return diff, buch, t.Seed
 }
 
 func (ss *SwissSystem) SimulateMatch(a, b *Team) {
-	recA := ss.Records[a]
-	recB := ss.Records[b]
+	idxA := a.Index
+	idxB := b.Index
+	recA := ss.Records[idxA]
+	recB := ss.Records[idxB]
 	isBO3 := recA.Wins == 2 || recA.Losses == 2
 
 	p := winProb(a, b, ss.Sigma)
@@ -132,15 +134,16 @@ func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 		recB.Wins++
 	}
 
-	ss.Faced[a][b] = true
-	ss.Faced[b][a] = true
+	ss.Faced[idxA] = append(ss.Faced[idxA], idxB)
+	ss.Faced[idxB] = append(ss.Faced[idxB], idxA)
 
 	if isBO3 {
 		for _, t := range []*Team{a, b} {
-			r := ss.Records[t]
+			idx := t.Index
+			r := ss.Records[idx]
 			if r.Wins == 3 || r.Losses == 3 {
-				delete(ss.Remaining, t)
-				ss.Finished[t] = true
+				ss.Remaining[idx] = false
+				ss.Finished[idx] = true
 			}
 		}
 	}
@@ -150,8 +153,11 @@ func (ss *SwissSystem) SimulateRound() {
 	pos := []*Team{}
 	even := []*Team{}
 	neg := []*Team{}
-	for t := range ss.Remaining {
-		diff := ss.Records[t].Diff()
+	for i, t := range ss.Teams {
+		if !ss.Remaining[i] {
+			continue
+		}
+		diff := ss.Records[i].Diff()
 		if diff > 0 {
 			pos = append(pos, t)
 		} else if diff < 0 {
@@ -179,7 +185,7 @@ func (ss *SwissSystem) SimulateRound() {
 	sortGroup(neg)
 
 	// special first round handling (seed 1-9,2-10,...)
-	if len(even) == len(ss.Records) {
+	if len(even) == len(ss.Teams) {
 		half := len(even) / 2
 		secondHalf := even[half:]
 		for i := 0; i < len(secondHalf)/2; i++ {
@@ -190,7 +196,7 @@ func (ss *SwissSystem) SimulateRound() {
 
 	for _, group := range [][]*Team{pos, even, neg} {
 		half := len(group) / 2
-		for i := 0; i < half; i++ {
+		for i := range half {
 			a := group[i]
 			b := group[len(group)-1-i]
 			ss.SimulateMatch(a, b)
@@ -199,7 +205,16 @@ func (ss *SwissSystem) SimulateRound() {
 }
 
 func (ss *SwissSystem) SimulateTournament() {
-	for len(ss.Remaining) > 0 {
+	for {
+		remaining := 0
+		for i := range ss.Teams {
+			if ss.Remaining[i] {
+				remaining++
+			}
+		}
+		if remaining == 0 {
+			break
+		}
 		ss.SimulateRound()
 	}
 }
@@ -217,13 +232,13 @@ func NewSimulation(filepath string) (*Simulation, error) {
 	}
 	defer file.Close()
 
-	var data map[string]interface{}
+	var data map[string]any
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&data); err != nil {
 		return nil, err
 	}
 
-	sigmaMap := data["sigma"].(map[string]interface{})
+	sigmaMap := data["sigma"].(map[string]any)
 	sigmaKeys := make([]string, 0, len(sigmaMap))
 	for k := range sigmaMap {
 		sigmaKeys = append(sigmaKeys, k)
@@ -234,20 +249,21 @@ func NewSimulation(filepath string) (*Simulation, error) {
 		sigma[i] = int(sigmaMap[k].(float64))
 	}
 
-	teamsData := data["teams"].(map[string]interface{})
+	teamsData := data["teams"].(map[string]any)
 
 	teams := make([]*Team, 0, len(teamsData))
 	teamMap := make(map[string]*Team)
 
 	for name, t := range teamsData {
-		tmap := t.(map[string]interface{})
+		tmap := t.(map[string]any)
 		seed := int(tmap["seed"].(float64))
 		ratings := make([]int, len(sigmaKeys))
 		for i, sysKey := range sigmaKeys {
 			ratingVal := tmap[sysKey].(float64)
 			ratings[i] = int(ratingVal)
 		}
-		team := &Team{Name: name, Seed: seed, Rating: ratings}
+		idx := len(teams)
+		team := &Team{Name: name, Seed: seed, Rating: ratings, Index: idx}
 		teams = append(teams, team)
 		teamMap[name] = team
 	}
@@ -261,31 +277,40 @@ type BatchResult struct {
 }
 
 func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchResult, error) {
-	type predSet struct {
-		perfect map[string]bool
-		advance map[string]bool
-		zero    map[string]bool
-	}
-	predSets := make([]predSet, len(predictions))
-	for i, p := range predictions {
-		ps := predSet{
-			perfect: make(map[string]bool),
-			advance: make(map[string]bool),
-			zero:    make(map[string]bool),
-		}
-		for _, t := range p["3-0"] {
-			ps.perfect[t] = true
-		}
-		for _, t := range p["3-1 or 3-2"] {
-			ps.advance[t] = true
-		}
-		for _, t := range p["0-3"] {
-			ps.zero[t] = true
-		}
-		predSets[i] = ps
+	teams := sim.Teams
+
+	// map team name to index (0..len(teams)-1)
+	name2idx := make(map[string]int, len(teams))
+	for idx, t := range teams {
+		name2idx[t.Name] = idx
 	}
 
-	teams := sim.Teams
+	type predMask struct {
+		perfectMask uint32
+		advanceMask uint32
+		zeroMask    uint32
+	}
+	predMasks := make([]predMask, len(predictions))
+	for i, p := range predictions {
+		var perfectMask, advanceMask, zeroMask uint32
+		for _, tn := range p["3-0"] {
+			idx := name2idx[tn]
+			perfectMask |= 1 << uint(idx)
+		}
+		for _, tn := range p["3-1 or 3-2"] {
+			idx := name2idx[tn]
+			advanceMask |= 1 << uint(idx)
+		}
+		for _, tn := range p["0-3"] {
+			idx := name2idx[tn]
+			zeroMask |= 1 << uint(idx)
+		}
+		predMasks[i] = predMask{
+			perfectMask: perfectMask,
+			advanceMask: advanceMask,
+			zeroMask:    zeroMask,
+		}
+	}
 
 	results := make(map[*Team]map[string]int)
 	for _, t := range teams {
@@ -296,50 +321,31 @@ func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchRe
 	// Create a local random source for this batch
 	localRand := rand.New(rand.NewSource(time.Now().UnixNano() + int64(n)))
 
-	for iter := 0; iter < n; iter++ {
+	for range n {
 		// Create a new random source for each iteration using the local random source to seed it
 		seed := localRand.Int63()
 		rng := rand.New(rand.NewSource(seed))
 		ss := NewSwissSystem(teams, sim.Sigma, rng)
 		ss.SimulateTournament()
 
-		outcomeGroups := map[string]map[string]bool{
-			"3-0":        make(map[string]bool),
-			"3-1 or 3-2": make(map[string]bool),
-			"0-3":        make(map[string]bool),
-		}
-		for _, t := range teams {
-			rec := ss.Records[t]
+		var masks [3]uint32 // 0:3-0, 1:3-1 or 3-2, 2:0-3
+		for idx := range teams {
+			rec := ss.Records[idx]
 			if rec.Wins == 3 {
 				if rec.Losses == 0 {
-					results[t]["3-0"]++
-					outcomeGroups["3-0"][t.Name] = true
+					masks[0] |= 1 << uint(idx)
 				} else {
-					results[t]["3-1 or 3-2"]++
-					outcomeGroups["3-1 or 3-2"][t.Name] = true
+					masks[1] |= 1 << uint(idx)
 				}
 			} else if rec.Losses == 3 {
-				results[t]["0-3"]++
-				outcomeGroups["0-3"][t.Name] = true
+				masks[2] |= 1 << uint(idx)
 			}
 		}
-		for idx, ps := range predSets {
-			score := 0
-			for tn := range outcomeGroups["3-0"] {
-				if ps.perfect[tn] {
-					score++
-				}
-			}
-			for tn := range outcomeGroups["3-1 or 3-2"] {
-				if ps.advance[tn] {
-					score++
-				}
-			}
-			for tn := range outcomeGroups["0-3"] {
-				if ps.zero[tn] {
-					score++
-				}
-			}
+
+		for idx, pm := range predMasks {
+			score := bits.OnesCount32(masks[0]&pm.perfectMask) +
+				bits.OnesCount32(masks[1]&pm.advanceMask) +
+				bits.OnesCount32(masks[2]&pm.zeroMask)
 			if score >= 6 {
 				success[idx]++
 			}
