@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -18,11 +16,30 @@ import (
 	"time"
 )
 
+type Category int
+
+const (
+	Cat3_0 Category = iota
+	CatAdv
+	Cat0_3
+)
+
+func (c Category) String() string {
+	switch c {
+	case Cat3_0:
+		return "3-0"
+	case CatAdv:
+		return "3-1 or 3-2"
+	case Cat0_3:
+		return "0-3"
+	}
+	return "unknown"
+}
+
 type Team struct {
 	Name   string
 	Seed   int
 	Rating []int
-	Index  int
 }
 
 func (t *Team) String() string { return t.Name }
@@ -36,26 +53,40 @@ func (r *Record) Diff() int { return r.Wins - r.Losses }
 
 type SwissSystem struct {
 	Sigma     []int
-	Teams     []*Team   // original team list in index order
-	Records   []*Record // indexed by Team.Index
-	Faced     [][]int   // indexed by Team.Index, holds opponent indices
-	Remaining []bool    // indexed by Team.Index
-	Finished  []bool    // indexed by Team.Index
+	Teams     []*Team   // original team list
+	Records   []*Record // indexed by Team.Seed
+	Faced     [][]int   // indexed by Team.Seed, holds opponent Seeds
+	Remaining []bool    // indexed by Team.Seed
+	Finished  []bool    // indexed by Team.Seed
 	rng       *rand.Rand
+	prob      [][]float64 // indexed by [SeedA][SeedB]
 }
 
 func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
-	n := len(teams)
-	records := make([]*Record, n)
-	faced := make([][]int, n)
-	remaining := make([]bool, n)
-	finished := make([]bool, n)
-	for i := 0; i < n; i++ {
+	maxSeed := 0
+	for _, t := range teams {
+		if t.Seed > maxSeed {
+			maxSeed = t.Seed
+		}
+	}
+	limit := maxSeed + 1
+
+	records := make([]*Record, limit)
+	faced := make([][]int, limit)
+	remaining := make([]bool, limit)
+	finished := make([]bool, limit)
+
+	// Initialize arrays
+	for i := range limit {
 		records[i] = &Record{}
 		faced[i] = make([]int, 0, 3)
-		remaining[i] = true
 	}
-	return &SwissSystem{
+	// Set active teams
+	for _, t := range teams {
+		remaining[t.Seed] = true
+	}
+
+	ss := &SwissSystem{
 		Sigma:     sigma,
 		Teams:     teams,
 		Records:   records,
@@ -64,15 +95,34 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
 		Finished:  finished,
 		rng:       rng,
 	}
+	// compute probability matrix
+	prob := make([][]float64, limit)
+	for i := range prob {
+		prob[i] = make([]float64, limit)
+	}
+
+	n := len(teams)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			tA := teams[i]
+			tB := teams[j]
+			p := winProb(tA, tB, sigma)
+			prob[tA.Seed][tB.Seed] = p
+			prob[tB.Seed][tA.Seed] = 1 - p
+		}
+	}
+	ss.prob = prob
+	return ss
 }
 
 func (ss *SwissSystem) Reset() {
-	for i := range ss.Records {
-		ss.Records[i].Wins = 0
-		ss.Records[i].Losses = 0
-		ss.Faced[i] = ss.Faced[i][:0]
-		ss.Remaining[i] = true
-		ss.Finished[i] = false
+	for _, t := range ss.Teams {
+		idx := t.Seed
+		ss.Records[idx].Wins = 0
+		ss.Records[idx].Losses = 0
+		ss.Faced[idx] = ss.Faced[idx][:0]
+		ss.Remaining[idx] = true
+		ss.Finished[idx] = false
 	}
 }
 
@@ -92,24 +142,24 @@ func winProb(a, b *Team, sigma []int) float64 {
 }
 
 func (ss *SwissSystem) seeding(t *Team) (int, int, int) {
-	idx := t.Index
+	idx := t.Seed
 	diff := -ss.Records[idx].Diff()
 	buch := 0
-	for _, oppIdx := range ss.Faced[idx] {
-		buch += ss.Records[oppIdx].Diff()
+	for _, oppSeed := range ss.Faced[idx] {
+		buch += ss.Records[oppSeed].Diff()
 	}
 	buch = -buch
 	return diff, buch, t.Seed
 }
 
 func (ss *SwissSystem) SimulateMatch(a, b *Team) {
-	idxA := a.Index
-	idxB := b.Index
+	idxA := a.Seed
+	idxB := b.Seed
 	recA := ss.Records[idxA]
 	recB := ss.Records[idxB]
 	isBO3 := recA.Wins == 2 || recA.Losses == 2
 
-	p := winProb(a, b, ss.Sigma)
+	p := ss.prob[idxA][idxB]
 
 	var teamAWins bool
 	if isBO3 {
@@ -139,7 +189,7 @@ func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 
 	if isBO3 {
 		for _, t := range []*Team{a, b} {
-			idx := t.Index
+			idx := t.Seed
 			r := ss.Records[idx]
 			if r.Wins == 3 || r.Losses == 3 {
 				ss.Remaining[idx] = false
@@ -153,11 +203,11 @@ func (ss *SwissSystem) SimulateRound() {
 	pos := []*Team{}
 	even := []*Team{}
 	neg := []*Team{}
-	for i, t := range ss.Teams {
-		if !ss.Remaining[i] {
+	for _, t := range ss.Teams {
+		if !ss.Remaining[t.Seed] {
 			continue
 		}
-		diff := ss.Records[i].Diff()
+		diff := ss.Records[t.Seed].Diff()
 		if diff > 0 {
 			pos = append(pos, t)
 		} else if diff < 0 {
@@ -207,8 +257,8 @@ func (ss *SwissSystem) SimulateRound() {
 func (ss *SwissSystem) SimulateTournament() {
 	for {
 		remaining := 0
-		for i := range ss.Teams {
-			if ss.Remaining[i] {
+		for _, t := range ss.Teams {
+			if ss.Remaining[t.Seed] {
 				remaining++
 			}
 		}
@@ -262,48 +312,43 @@ func NewSimulation(filepath string) (*Simulation, error) {
 			ratingVal := tmap[sysKey].(float64)
 			ratings[i] = int(ratingVal)
 		}
-		idx := len(teams)
-		team := &Team{Name: name, Seed: seed, Rating: ratings, Index: idx}
+		team := &Team{Name: name, Seed: seed, Rating: ratings}
 		teams = append(teams, team)
 		teamMap[name] = team
 	}
+
+	// Sort teams by seed for deterministic order
+	sort.Slice(teams, func(i, j int) bool {
+		return teams[i].Seed < teams[j].Seed
+	})
 
 	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap}, nil
 }
 
 type BatchResult struct {
-	Results map[*Team]map[string]int
+	Results map[*Team]map[Category]int
 	Success []int
 }
 
-func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchResult, error) {
+func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchResult, error) {
 	teams := sim.Teams
 
-	// map team name to index (0..len(teams)-1)
-	name2idx := make(map[string]int, len(teams))
-	for idx, t := range teams {
-		name2idx[t.Name] = idx
-	}
-
 	type predMask struct {
-		perfectMask uint32
-		advanceMask uint32
-		zeroMask    uint32
+		perfectMask uint64
+		advanceMask uint64
+		zeroMask    uint64
 	}
 	predMasks := make([]predMask, len(predictions))
 	for i, p := range predictions {
-		var perfectMask, advanceMask, zeroMask uint32
-		for _, tn := range p["3-0"] {
-			idx := name2idx[tn]
-			perfectMask |= 1 << uint(idx)
+		var perfectMask, advanceMask, zeroMask uint64
+		for _, seed := range p[Cat3_0] {
+			perfectMask |= 1 << uint(seed)
 		}
-		for _, tn := range p["3-1 or 3-2"] {
-			idx := name2idx[tn]
-			advanceMask |= 1 << uint(idx)
+		for _, seed := range p[CatAdv] {
+			advanceMask |= 1 << uint(seed)
 		}
-		for _, tn := range p["0-3"] {
-			idx := name2idx[tn]
-			zeroMask |= 1 << uint(idx)
+		for _, seed := range p[Cat0_3] {
+			zeroMask |= 1 << uint(seed)
 		}
 		predMasks[i] = predMask{
 			perfectMask: perfectMask,
@@ -312,40 +357,41 @@ func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchRe
 		}
 	}
 
-	results := make(map[*Team]map[string]int)
+	results := make(map[*Team]map[Category]int)
 	for _, t := range teams {
-		results[t] = map[string]int{"3-0": 0, "3-1 or 3-2": 0, "0-3": 0}
+		results[t] = map[Category]int{Cat3_0: 0, CatAdv: 0, Cat0_3: 0}
 	}
 	success := make([]int, len(predictions))
 
 	// Create a local random source for this batch
 	localRand := rand.New(rand.NewSource(time.Now().UnixNano() + int64(n)))
+	// single rng for this batch's iterations
+	rng := rand.New(rand.NewSource(localRand.Int63()))
+	// create a single SwissSystem and reuse across iterations
+	ss := NewSwissSystem(teams, sim.Sigma, rng)
 
 	for range n {
-		// Create a new random source for each iteration using the local random source to seed it
-		seed := localRand.Int63()
-		rng := rand.New(rand.NewSource(seed))
-		ss := NewSwissSystem(teams, sim.Sigma, rng)
+		ss.Reset()
 		ss.SimulateTournament()
 
-		var masks [3]uint32 // 0:3-0, 1:3-1 or 3-2, 2:0-3
-		for idx := range teams {
-			rec := ss.Records[idx]
+		var masks [3]uint64 // 0:3-0, 1:3-1 or 3-2, 2:0-3
+		for _, t := range teams {
+			rec := ss.Records[t.Seed]
 			if rec.Wins == 3 {
 				if rec.Losses == 0 {
-					masks[0] |= 1 << uint(idx)
+					masks[0] |= 1 << uint(t.Seed)
 				} else {
-					masks[1] |= 1 << uint(idx)
+					masks[1] |= 1 << uint(t.Seed)
 				}
 			} else if rec.Losses == 3 {
-				masks[2] |= 1 << uint(idx)
+				masks[2] |= 1 << uint(t.Seed)
 			}
 		}
 
 		for idx, pm := range predMasks {
-			score := bits.OnesCount32(masks[0]&pm.perfectMask) +
-				bits.OnesCount32(masks[1]&pm.advanceMask) +
-				bits.OnesCount32(masks[2]&pm.zeroMask)
+			score := bits.OnesCount64(masks[0]&pm.perfectMask) +
+				bits.OnesCount64(masks[1]&pm.advanceMask) +
+				bits.OnesCount64(masks[2]&pm.zeroMask)
 			if score >= 6 {
 				success[idx]++
 			}
@@ -354,20 +400,20 @@ func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchRe
 	return &BatchResult{Results: results, Success: success}, nil
 }
 
-func (sim *Simulation) Run(n, k int, predictions []map[string][]string) (map[*Team]map[string]int, []float64) {
+func (sim *Simulation) Run(n, k int, predictions []map[Category][]int) (map[*Team]map[Category]int, []float64) {
 	batchSize := n / k
 	remainder := n % k
 
 	var wg sync.WaitGroup
 	mu := sync.Mutex{}
 
-	combinedResults := make(map[*Team]map[string]int)
+	combinedResults := make(map[*Team]map[Category]int)
 	for _, t := range sim.Teams {
-		combinedResults[t] = map[string]int{"3-0": 0, "3-1 or 3-2": 0, "0-3": 0}
+		combinedResults[t] = map[Category]int{Cat3_0: 0, CatAdv: 0, Cat0_3: 0}
 	}
 	combinedSuccess := make([]int, len(predictions))
 
-	for i := 0; i < k; i++ {
+	for i := range k {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -400,25 +446,31 @@ func (sim *Simulation) Run(n, k int, predictions []map[string][]string) (map[*Te
 	return combinedResults, percentages
 }
 
-func hashPrediction(pred map[string][]string) string {
-	g1 := append([]string{}, pred["3-0"]...)
-	sort.Strings(g1)
-	g2 := append([]string{}, pred["3-1 or 3-2"]...)
-	sort.Strings(g2)
-	g3 := append([]string{}, pred["0-3"]...)
-	sort.Strings(g3)
-	var concat []byte
-	for _, s := range g1 {
-		concat = append(concat, s...)
+func hashPrediction(pred map[Category][]int) uint64 {
+	g1 := append([]int{}, pred[Cat3_0]...)
+	sort.Ints(g1)
+	g2 := append([]int{}, pred[CatAdv]...)
+	sort.Ints(g2)
+	g3 := append([]int{}, pred[Cat0_3]...)
+	sort.Ints(g3)
+	// Use a fixed-size buffer for hashing
+	var h uint64
+	for i, s := range g1 {
+		h ^= uint64(s) << (i * 4)
 	}
-	for _, s := range g2 {
-		concat = append(concat, s...)
+	for i, s := range g2 {
+		h ^= uint64(s) << ((i + 2) * 4)
 	}
-	for _, s := range g3 {
-		concat = append(concat, s...)
+	for i, s := range g3 {
+		h ^= uint64(s) << ((i + 8) * 4)
 	}
-	hash := md5.Sum(concat)
-	return hex.EncodeToString(hash[:])
+	// Mix the bits for better distribution
+	h ^= h >> 33
+	h *= 0xff51afd7ed558ccd
+	h ^= h >> 33
+	h *= 0xc4ceb9fe1a85ec53
+	h ^= h >> 33
+	return h
 }
 
 func main() {
@@ -470,26 +522,28 @@ func main() {
 		panic(err)
 	}
 
-	teamNames := make([]string, 0, len(sim.Teams))
+	teamSeeds := make([]int, 0, len(sim.Teams))
+	seed2Name := make(map[int]string)
 	for _, t := range sim.Teams {
-		teamNames = append(teamNames, t.Name)
+		teamSeeds = append(teamSeeds, t.Seed)
+		seed2Name[t.Seed] = t.Name
 	}
 
-	predictions := make([]map[string][]string, 0, p)
-	hashes := make(map[string]bool)
+	predictions := make([]map[Category][]int, 0, p)
+	hashes := make(map[uint64]bool)
 
 	for i := 0; i < p; i++ {
 		for {
-			shuffled := make([]string, len(teamNames))
-			copy(shuffled, teamNames)
+			shuffled := make([]int, len(teamSeeds))
+			copy(shuffled, teamSeeds)
 			// Use masterRand to shuffle
 			masterRand.Shuffle(len(shuffled), func(i, j int) {
 				shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 			})
-			pred := map[string][]string{
-				"3-0":        shuffled[:2],
-				"3-1 or 3-2": shuffled[2:8],
-				"0-3":        shuffled[8:10],
+			pred := map[Category][]int{
+				Cat3_0: shuffled[:2],
+				CatAdv: shuffled[2:8],
+				Cat0_3: shuffled[8:10],
 			}
 			h := hashPrediction(pred)
 			if !hashes[h] {
@@ -508,7 +562,7 @@ func main() {
 
 	type predScore struct {
 		score float64
-		pred  map[string][]string
+		pred  map[Category][]int
 	}
 	psList := make([]predScore, len(predictions))
 	for i, pred := range predictions {
@@ -522,13 +576,18 @@ func main() {
 		ps := psList[idx]
 		fmt.Printf("Percent of success: %.2f%%\n", ps.score)
 		h := hashPrediction(ps.pred)
-		if len(h) >= 5 {
-			fmt.Printf("%s\n", h[len(h)-5:])
+		hStr := fmt.Sprintf("%x", h)
+		if len(hStr) >= 5 {
+			fmt.Printf("%s\n", hStr[len(hStr)-5:])
 		} else {
-			fmt.Printf("%s\n", h)
+			fmt.Printf("%s\n", hStr)
 		}
 		for key, val := range ps.pred {
-			fmt.Printf("'%s': %s\n", key, strings.Join(val, ", "))
+			names := make([]string, len(val))
+			for i, seed := range val {
+				names[i] = seed2Name[seed]
+			}
+			fmt.Printf("'%s': %s\n", key, strings.Join(names, ", "))
 		}
 		fmt.Println()
 	}
