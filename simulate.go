@@ -10,36 +10,12 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 )
-
-type lockedRand struct {
-	sync.Mutex
-	r *rand.Rand
-}
-
-func (lr *lockedRand) Float64() float64 {
-	lr.Lock()
-	defer lr.Unlock()
-	return lr.r.Float64()
-}
-
-func (lr *lockedRand) Intn(n int) int {
-	lr.Lock()
-	defer lr.Unlock()
-	return lr.r.Intn(n)
-}
-
-func (lr *lockedRand) Shuffle(n int, swap func(i, j int)) {
-	lr.Lock()
-	defer lr.Unlock()
-	lr.r.Shuffle(n, swap)
-}
-
-var globalRand = &lockedRand{r: rand.New(rand.NewSource(1))}
 
 type Team struct {
 	Name   string
@@ -62,9 +38,10 @@ type SwissSystem struct {
 	Faced     map[*Team]map[*Team]bool
 	Remaining map[*Team]bool
 	Finished  map[*Team]bool
+	rng       *rand.Rand
 }
 
-func NewSwissSystem(teams []*Team, sigma []int) *SwissSystem {
+func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
 	records := make(map[*Team]*Record)
 	faced := make(map[*Team]map[*Team]bool)
 	remaining := make(map[*Team]bool)
@@ -79,6 +56,7 @@ func NewSwissSystem(teams []*Team, sigma []int) *SwissSystem {
 		Faced:     faced,
 		Remaining: remaining,
 		Finished:  make(map[*Team]bool),
+		rng:       rng,
 	}
 }
 
@@ -135,7 +113,7 @@ func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 	if isBO3 {
 		aWins, bWins := 0, 0
 		for aWins < 2 && bWins < 2 {
-			if globalRand.Float64() < p {
+			if ss.rng.Float64() < p {
 				aWins++
 			} else {
 				bWins++
@@ -143,7 +121,7 @@ func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 		}
 		teamAWins = aWins > bWins
 	} else {
-		teamAWins = globalRand.Float64() < p
+		teamAWins = ss.rng.Float64() < p
 	}
 
 	if teamAWins {
@@ -308,7 +286,6 @@ func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchRe
 	}
 
 	teams := sim.Teams
-	ss := NewSwissSystem(teams, sim.Sigma)
 
 	results := make(map[*Team]map[string]int)
 	for _, t := range teams {
@@ -316,8 +293,14 @@ func (sim *Simulation) Batch(n int, predictions []map[string][]string) (*BatchRe
 	}
 	success := make([]int, len(predictions))
 
+	// Create a local random source for this batch
+	localRand := rand.New(rand.NewSource(time.Now().UnixNano() + int64(n)))
+
 	for iter := 0; iter < n; iter++ {
-		ss.Reset()
+		// Create a new random source for each iteration using the local random source to seed it
+		seed := localRand.Int63()
+		rng := rand.New(rand.NewSource(seed))
+		ss := NewSwissSystem(teams, sim.Sigma, rng)
 		ss.SimulateTournament()
 
 		outcomeGroups := map[string]map[string]bool{
@@ -435,6 +418,7 @@ func hashPrediction(pred map[string][]string) string {
 func main() {
 	var file string
 	var n, k, p, s int
+	var profilePath string
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s -f <data.json> [options]\n\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -444,6 +428,7 @@ func main() {
 	flag.IntVar(&k, "k", runtime.NumCPU(), "number of cores to use")
 	flag.IntVar(&p, "p", 1_000, "number of predictions to run")
 	flag.IntVar(&s, "s", 0, "random seed")
+	flag.StringVar(&profilePath, "profile", "", "write cpu profile to file")
 	flag.Parse()
 
 	if file == "" {
@@ -451,10 +436,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	// CPU profiling
+	if profilePath != "" {
+		f, err := os.Create(profilePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not create CPU profile: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "could not start CPU profile: %v\n", err)
+			os.Exit(1)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
+	// Set up a master random source for generating seeds
+	var masterRand *rand.Rand
 	if s != 0 {
-		globalRand.r = rand.New(rand.NewSource(int64(s)))
+		masterRand = rand.New(rand.NewSource(int64(s)))
 	} else {
-		globalRand.r = rand.New(rand.NewSource(time.Now().UnixNano()))
+		masterRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 
 	sim, err := NewSimulation(file)
@@ -474,7 +476,8 @@ func main() {
 		for {
 			shuffled := make([]string, len(teamNames))
 			copy(shuffled, teamNames)
-			globalRand.Shuffle(len(shuffled), func(i, j int) {
+			// Use masterRand to shuffle
+			masterRand.Shuffle(len(shuffled), func(i, j int) {
 				shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 			})
 			pred := map[string][]string{
