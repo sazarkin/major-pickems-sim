@@ -54,6 +54,7 @@ type Simulation struct {
 	Sigma   []int
 	Teams   []*Team
 	TeamMap map[string]*Team
+	Prob    [][]float64
 }
 
 func NewSimulation(filepath string) (*Simulation, error) {
@@ -103,7 +104,18 @@ func NewSimulation(filepath string) (*Simulation, error) {
 		return teams[i].Seed < teams[j].Seed
 	})
 
-	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap}, nil
+	// Precompute probability matrix
+	// Find max seed
+	maxSeed := 0
+	for _, t := range teams {
+		if t.Seed > maxSeed {
+			maxSeed = t.Seed
+		}
+	}
+	limit := maxSeed + 1
+	prob := ComputeProbabilities(teams, sigma, limit)
+	
+	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap, Prob: prob}, nil
 }
 
 type BatchResult struct {
@@ -149,7 +161,7 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 	// single rng for this batch's iterations
 	rng := rand.New(rand.NewSource(localRand.Int63()))
 	// create a single SwissSystem and reuse across iterations
-	ss := NewSwissSystem(teams, sim.Sigma, rng, nil)
+	ss := NewSwissSystem(teams, sim.Sigma, rng, sim.Prob)
 
 	for range n {
 		ss.Reset()

@@ -56,7 +56,7 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64
 	if prob != nil {
 		ss.prob = prob
 	} else {
-		ss.prob = computeProbabilities(teams, sigma, limit)
+		ss.prob = ComputeProbabilities(teams, sigma, limit)
 	}
 	return ss
 }
@@ -88,7 +88,7 @@ func winProb(a, b *Team, sigma []int) float64 {
 	return probs[mid]
 }
 
-func computeProbabilities(teams []*Team, sigma []int, limit int) [][]float64 {
+func ComputeProbabilities(teams []*Team, sigma []int, limit int) [][]float64 {
 	// compute probability matrix
 	prob := make([][]float64, limit)
 	for i := range prob {
