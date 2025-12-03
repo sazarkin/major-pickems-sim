@@ -26,7 +26,7 @@ Once built, use the binary with the desired options:
   -f string
         path to input data (.json)
   -k int
-        number of cores to use (default 24)
+        number of cores to use (default all)
   -n int
         number of iterations to run (default 1000000)
   -p int
