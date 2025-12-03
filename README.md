@@ -2,12 +2,27 @@
 
 This is a Go program to simulate tournament stage outcomes for Counter-Strike major tournaments, used to assist decision making for pick'ems. The swiss system follows the seeding rules and format [documented by Valve](https://github.com/ValveSoftware/counter-strike/blob/main/major-supplemental-rulebook.md#seeding), and the tournament rounds are progressed with randomised match outcomes. Each team's ranking from various sources is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
 
-### Command line interface
+### Building the executable
+
+First, compile the program to create an executable binary:
+
+```bash
+go build -o simulate simulate.go swisssystem.go
+```
+
+This will generate a `simulate` binary (or `simulate.exe` on Windows) that you can run directly.
+
+### Running the simulation
+
+Once built, use the binary with the desired options:
+
+```bash
+./simulate -f <data.json> [options]
+```
+
+#### Command line options
 
 ```
-Usage: go run simulate.go -f <data.json> [options]
-
-Options:
   -f string
         path to input data (.json)
   -k int
@@ -22,10 +37,21 @@ Options:
         random seed
 ```
 
-Example:
+#### Example
+
+```bash
+./simulate -f data/2025_budapest_stage3.json
 ```
-go run simulate.go -f data/2025_budapest_stage3.json
+
+### Alternative: running without building
+
+If you prefer not to build a binary first, you can still use `go run` with both source files:
+
+```bash
+go run simulate.go swisssystem.go -f data/2025_budapest_stage3.json
 ```
+
+However, building the binary first is more efficient for multiple runs.
 
 ### JSON data format
 
@@ -47,6 +73,8 @@ go run simulate.go -f data/2025_budapest_stage3.json
 ```
 
 ### Sample output
+
+After running the simulation, you'll see the top 5 predictions with their success rates:
 
 ```text
 Percent of success: 26.00%
@@ -79,3 +107,8 @@ Percent of success: 21.89%
 '3-1 or 3-2': FURIA, MOUZ, The MongolZ, Team Spirit, Natus Vincere, Team Vitality
 '0-3': PARIVISION, FaZe Clan
 ```
+
+The output shows:
+1. The success percentage for each prediction
+2. A 5-character hash identifying the prediction
+3. Teams predicted to go 3-0, 3-1/3-2, and 0-3
