@@ -1,19 +1,30 @@
 # Major Pick'ems Simulator
 
-This is a basic Python script to simulate tournament stage outcomes for Counter-Strike major tournaments, used to assist decision making for pick'ems. The swiss system follows the seeding rules and format [documented by Valve](https://github.com/ValveSoftware/counter-strike/blob/main/major-supplemental-rulebook.md#seeding), and the tournament rounds are progressed with randomised match outcomes. Each team's ranking from various sources is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
+This is a Go program to simulate tournament stage outcomes for Counter-Strike major tournaments, used to assist decision making for pick'ems. The swiss system follows the seeding rules and format [documented by Valve](https://github.com/ValveSoftware/counter-strike/blob/main/major-supplemental-rulebook.md#seeding), and the tournament rounds are progressed with randomised match outcomes. Each team's ranking from various sources is aggregated to approximate a win probability for each head to head match up. This is by no means an exhaustive or accurate analysis but may give insight to some teams which have higher probability of facing weaker teams to get their 3 wins, or vice versa.
 
 ### Command line interface
 
 ```
-usage: python simulate.py [-h] -f F [-n N] [-k K] [-p P] [-s S]
+Usage: go run simulate.go -f <data.json> [options]
 
-options:
-  -h, --help  show this help message and exit
-  -f F        path to input data (.json)
-  -n N        number of iterations to run
-  -k K        number of cores to use
-  -p P        number of predictions to run
-  -s S        random seed
+Options:
+  -f string
+        path to input data (.json)
+  -k int
+        number of cores to use (default 24)
+  -n int
+        number of iterations to run (default 1000000)
+  -p int
+        number of predictions to run (default 1000)
+  -profile string
+        write cpu profile to file
+  -s int
+        random seed
+```
+
+Example:
+```
+go run simulate.go -f data/2025_budapest_stage3.json
 ```
 
 ### JSON data format
@@ -38,61 +49,33 @@ options:
 ### Sample output
 
 ```text
-RESULTS FROM 1,000,000 TOURNAMENT SIMULATIONS
+Percent of success: 26.00%
+dea74
+'0-3': Passion UA, Imperial Esports
+'3-0': Team Vitality, Team Spirit
+'3-1 or 3-2': G2 Esports, MOUZ, B8, FURIA, Natus Vincere, The MongolZ
 
-Most likely to 3-0:
-1.  FaZe             38.4%
-2.  Spirit           31.4%
-3.  Vitality         31.4%
-4.  MOUZ             25.6%
-5.  Virtus.pro       18.4%
-6.  Natus Vincere    15.7%
-7.  G2               14.2%
-8.  Complexity        6.5%
-9.  Cloud9            4.6%
-10. HEROIC            3.7%
-11. Eternal Fire      3.5%
-12. FURIA             2.5%
-13. The MongolZ       1.3%
-14. Imperial          1.0%
-15. ECSTATIC          0.9%
-16. paiN              0.8%
+Percent of success: 22.36%
+f2a85
+'3-0': G2 Esports, FURIA
+'3-1 or 3-2': paiN Gaming, MOUZ, Team Liquid, The MongolZ, Natus Vincere, B8
+'0-3': Passion UA, Imperial Esports
 
-Most likely to 3-1 or 3-2:
-1.  G2               58.7%
-2.  MOUZ             58.1%
-3.  Natus Vincere    58.0%
-4.  Vitality         57.5%
-5.  Virtus.pro       57.0%
-6.  Spirit           56.4%
-7.  FaZe             53.1%
-8.  Complexity       38.9%
-9.  Cloud9           36.4%
-10. HEROIC           31.6%
-11. Eternal Fire     30.8%
-12. FURIA            21.4%
-13. The MongolZ      12.9%
-14. Imperial         10.1%
-15. ECSTATIC          9.9%
-16. paiN              9.1%
+Percent of success: 22.25%
+020d9
+'0-3': Imperial Esports, PARIVISION
+'3-0': Natus Vincere, Team Vitality
+'3-1 or 3-2': Team Liquid, MOUZ, G2 Esports, Team Falcons, FaZe Clan, FURIA
 
-Most likely to 0-3:
-1.  Imperial         31.8%
-2.  ECSTATIC         31.5%
-3.  paiN             31.0%
-4.  The MongolZ      29.1%
-5.  FURIA            21.3%
-6.  Eternal Fire     13.2%
-7.  HEROIC           12.4%
-8.  Cloud9           10.2%
-9.  Complexity        7.2%
-10. G2                2.7%
-11. Virtus.pro        2.6%
-12. Natus Vincere     2.5%
-13. MOUZ              1.4%
-14. Spirit            1.2%
-15. Vitality          1.0%
-16. FaZe              0.8%
+Percent of success: 21.92%
+45817
+'3-0': Imperial Esports, Team Falcons
+'3-1 or 3-2': MOUZ, G2 Esports, Team Liquid, Team Vitality, Natus Vincere, FURIA
+'0-3': Passion UA, FaZe Clan
 
-Run time: 17.70 seconds
+Percent of success: 21.89%
+47f75
+'3-0': Team Falcons, Passion UA
+'3-1 or 3-2': FURIA, MOUZ, The MongolZ, Team Spirit, Natus Vincere, Team Vitality
+'0-3': PARIVISION, FaZe Clan
 ```
