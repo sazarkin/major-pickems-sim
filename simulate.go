@@ -149,7 +149,7 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 	// single rng for this batch's iterations
 	rng := rand.New(rand.NewSource(localRand.Int63()))
 	// create a single SwissSystem and reuse across iterations
-	ss := NewSwissSystem(teams, sim.Sigma, rng)
+	ss := NewSwissSystem(teams, sim.Sigma, rng, nil)
 
 	for range n {
 		ss.Reset()

@@ -19,7 +19,7 @@ type SwissSystem struct {
 	prob      [][]float64 // indexed by [SeedA][SeedB]
 }
 
-func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
+func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) *SwissSystem {
 	maxSeed := 0
 	for _, t := range teams {
 		if t.Seed > maxSeed {
@@ -53,23 +53,11 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand) *SwissSystem {
 		Round:     0,
 		rng:       rng,
 	}
-	// compute probability matrix
-	prob := make([][]float64, limit)
-	for i := range prob {
-		prob[i] = make([]float64, limit)
+	if prob != nil {
+		ss.prob = prob
+	} else {
+		ss.prob = computeProbabilities(teams, sigma, limit)
 	}
-
-	n := len(teams)
-	for i := range n {
-		for j := i + 1; j < n; j++ {
-			tA := teams[i]
-			tB := teams[j]
-			p := winProb(tA, tB, sigma)
-			prob[tA.Seed][tB.Seed] = p
-			prob[tB.Seed][tA.Seed] = 1 - p
-		}
-	}
-	ss.prob = prob
 	return ss
 }
 
@@ -100,6 +88,27 @@ func winProb(a, b *Team, sigma []int) float64 {
 	return probs[mid]
 }
 
+func computeProbabilities(teams []*Team, sigma []int, limit int) [][]float64 {
+	// compute probability matrix
+	prob := make([][]float64, limit)
+	for i := range prob {
+		prob[i] = make([]float64, limit)
+	}
+
+	n := len(teams)
+	for i := range n {
+		for j := i + 1; j < n; j++ {
+			tA := teams[i]
+			tB := teams[j]
+			p := winProb(tA, tB, sigma)
+			prob[tA.Seed][tB.Seed] = p
+			prob[tB.Seed][tA.Seed] = 1 - p
+		}
+	}
+
+	return prob
+}
+
 // CalculateBuchholz calculates the Buchholz score for a given seed.
 // Buchholz score is the sum of the score differences of all opponents faced.
 func (ss *SwissSystem) CalculateBuchholz(seed int) int {
@@ -109,13 +118,6 @@ func (ss *SwissSystem) CalculateBuchholz(seed int) int {
 		buchholz += rec.Diff()
 	}
 	return buchholz
-}
-
-// SetProbBySeed sets the probability for team with seedA to beat team with seedB.
-// It also sets the reverse probability accordingly.
-func (ss *SwissSystem) SetProbBySeed(seedA, seedB int, p float64) {
-	ss.prob[seedA][seedB] = p
-	ss.prob[seedB][seedA] = 1 - p
 }
 
 func (ss *SwissSystem) SimulateMatch(a, b *Team) {

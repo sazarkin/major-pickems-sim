@@ -28,61 +28,70 @@ func TestBudapest2025Stage1(t *testing.T) {
 		{Name: "Rare Atom", Seed: 16, Rating: []int{1500}},
 	}
 
-	sigma := []int{200}
-	rng := rand.New(rand.NewSource(42))
-	ss := NewSwissSystem(teams, sigma, rng)
+	prob := make([][]float64, 17)
+	for i := range prob {
+		prob[i] = make([]float64, 17)
+	}
+	setProbBySeed := func(seedA, seedB int, p float64) {
+		prob[seedA][seedB] = p
+		prob[seedB][seedA] = 1 - p
+	}
 
 	// Set probabilities to match actual results
 	// Round 1
-	ss.SetProbBySeed(1, 9, 0.0)  // Legacy loses to FlyQuest (actual: 10-13)
-	ss.SetProbBySeed(2, 10, 1.0) // FaZe beats Lynn Vision
-	ss.SetProbBySeed(3, 11, 0.0) // B8 loses to M80
-	ss.SetProbBySeed(4, 12, 0.0) // GamerLegion loses to Fluxo
-	ss.SetProbBySeed(5, 13, 1.0) // Fnatic beats RED Canids
-	ss.SetProbBySeed(6, 14, 1.0) // PARIVISION beats The Huns
-	ss.SetProbBySeed(7, 15, 0.0) // NiP loses to NRG
-	ss.SetProbBySeed(8, 16, 1.0) // Imperial beats Rare Atom
+	setProbBySeed(1, 9, 0.0)  // Legacy loses to FlyQuest (actual: 10-13)
+	setProbBySeed(2, 10, 1.0) // FaZe beats Lynn Vision
+	setProbBySeed(3, 11, 0.0) // B8 loses to M80
+	setProbBySeed(4, 12, 0.0) // GamerLegion loses to Fluxo
+	setProbBySeed(5, 13, 1.0) // Fnatic beats RED Canids
+	setProbBySeed(6, 14, 1.0) // PARIVISION beats The Huns
+	setProbBySeed(7, 15, 0.0) // NiP loses to NRG
+	setProbBySeed(8, 16, 1.0) // Imperial beats Rare Atom
 
 	// Round 2
-	ss.SetProbBySeed(2, 15, 0.0) // FaZe loses to NRG
-	ss.SetProbBySeed(5, 12, 0.0) // Fnatic loses to Fluxo
-	ss.SetProbBySeed(6, 11, 0.0) // PARIVISION loses to M80
-	ss.SetProbBySeed(8, 9, 0.0)  // Imperial loses to FlyQuest
-	ss.SetProbBySeed(1, 16, 1.0) // Legacy beats Rare Atom
-	ss.SetProbBySeed(3, 14, 1.0) // B8 beats The Huns
-	ss.SetProbBySeed(4, 13, 0.0) // GamerLegion loses to RED Canids
-	ss.SetProbBySeed(7, 10, 1.0) // NiP beats Lynn Vision
+	setProbBySeed(2, 15, 0.0) // FaZe loses to NRG
+	setProbBySeed(5, 12, 0.0) // Fnatic loses to Fluxo
+	setProbBySeed(6, 11, 0.0) // PARIVISION loses to M80
+	setProbBySeed(8, 9, 0.0)  // Imperial loses to FlyQuest
+	setProbBySeed(1, 16, 1.0) // Legacy beats Rare Atom
+	setProbBySeed(3, 14, 1.0) // B8 beats The Huns
+	setProbBySeed(4, 13, 0.0) // GamerLegion loses to RED Canids
+	setProbBySeed(7, 10, 1.0) // NiP beats Lynn Vision
 
 	// Round 3
 	// 2-0 pool (Bo3)
-	ss.SetProbBySeed(9, 12, 1.0)  // FlyQuest beats Fluxo
-	ss.SetProbBySeed(11, 15, 1.0) // M80 beats NRG
+	setProbBySeed(9, 12, 1.0)  // FlyQuest beats Fluxo
+	setProbBySeed(11, 15, 1.0) // M80 beats NRG
 	// 1-1 pool (Bo1)
-	ss.SetProbBySeed(5, 8, 1.0)  // Fnatic beats Imperial
-	ss.SetProbBySeed(1, 13, 1.0) // Legacy beats RED Canids
-	ss.SetProbBySeed(2, 7, 0.0)  // FaZe loses to NiP
-	ss.SetProbBySeed(3, 6, 1.0)  // B8 beats PARIVISION
+	setProbBySeed(5, 8, 1.0)  // Fnatic beats Imperial
+	setProbBySeed(1, 13, 1.0) // Legacy beats RED Canids
+	setProbBySeed(2, 7, 0.0)  // FaZe loses to NiP
+	setProbBySeed(3, 6, 1.0)  // B8 beats PARIVISION
 	// 0-2 pool (Bo3)
-	ss.SetProbBySeed(4, 16, 1.0)  // GamerLegion beats Rare Atom
-	ss.SetProbBySeed(10, 14, 0.0) // Lynn Vision loses to The Huns
+	setProbBySeed(4, 16, 1.0)  // GamerLegion beats Rare Atom
+	setProbBySeed(10, 14, 0.0) // Lynn Vision loses to The Huns
 
 	// Round 4
 	// 3-0 Qualified: FlyQuest, M80 are already qualified
 	// 2-1 pool (Bo3)
-	ss.SetProbBySeed(12, 7, 0.0) // Fluxo loses to NiP
-	ss.SetProbBySeed(15, 5, 0.0) // NRG loses to Fnatic
-	ss.SetProbBySeed(3, 1, 1.0)  // B8 beats Legacy
+	setProbBySeed(12, 7, 0.0) // Fluxo loses to NiP
+	setProbBySeed(15, 5, 0.0) // NRG loses to Fnatic
+	setProbBySeed(3, 1, 1.0)  // B8 beats Legacy
 	// 1-2 pool (Bo3)
-	ss.SetProbBySeed(6, 4, 1.0)  // PARIVISION beats GamerLegion
-	ss.SetProbBySeed(8, 14, 1.0) // Imperial beats The Huns
-	ss.SetProbBySeed(13, 2, 0.0) // RED Canids loses to FaZe
+	setProbBySeed(6, 4, 1.0)  // PARIVISION beats GamerLegion
+	setProbBySeed(8, 14, 1.0) // Imperial beats The Huns
+	setProbBySeed(13, 2, 0.0) // RED Canids loses to FaZe
 
 	// Round 5
 	// 3-1 to qualify: B8, Fnatic, NiP are already qualified
 	// 2-2 pool (Bo3) - Qualification matches
-	ss.SetProbBySeed(15, 8, 0.0) // NRG loses to Imperial
-	ss.SetProbBySeed(12, 2, 0.0) // Fluxo loses to FaZe
-	ss.SetProbBySeed(6, 1, 1.0)  // PARIVISION beats Legacy (to match final standings: Legacy 2-3, PARIVISION 3-2)
+	setProbBySeed(15, 8, 0.0) // NRG loses to Imperial
+	setProbBySeed(12, 2, 0.0) // Fluxo loses to FaZe
+	setProbBySeed(6, 1, 1.0)  // PARIVISION beats Legacy (to match final standings: Legacy 2-3, PARIVISION 3-2)
+
+	sigma := []int{200}
+	rng := rand.New(rand.NewSource(42))
+	ss := NewSwissSystem(teams, sigma, rng, prob)
 
 	// Run the tournament
 	ss.SimulateTournament()
@@ -137,9 +146,14 @@ func TestBudapest2025Stage2(t *testing.T) {
 		{Name: "FaZe Clan", Seed: 16, Rating: []int{1500}},
 	}
 
-	sigma := []int{100}
-	rng := rand.New(rand.NewSource(42))
-	ss := NewSwissSystem(teams, sigma, rng)
+	prob := make([][]float64, 17)
+	for i := range prob {
+		prob[i] = make([]float64, 17)
+	}
+	setProbBySeed := func(seedA, seedB int, p float64) {
+		prob[seedA][seedB] = p
+		prob[seedB][seedA] = 1 - p
+	}
 
 	// Set deterministic probabilities for every match that occurred in the real tournament.
 	// Each entry: (winnerSeed, loserSeed, 1.0)
@@ -201,9 +215,12 @@ func TestBudapest2025Stage2(t *testing.T) {
 	}
 
 	for _, m := range matches {
-		ss.SetProbBySeed(m.winner, m.loser, 1.0)
+		setProbBySeed(m.winner, m.loser, 1.0)
 	}
 
+	sigma := []int{100}
+	rng := rand.New(rand.NewSource(42))
+	ss := NewSwissSystem(teams, sigma, rng, prob)
 	ss.SimulateTournament()
 
 	// Expected final records (wins, losses) for each seed
