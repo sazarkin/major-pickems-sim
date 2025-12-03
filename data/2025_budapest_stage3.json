@@ -1,0 +1,91 @@
+{
+    "systems": {
+        "valve": "lambda x: x",
+        "hltv": "lambda x: (x ** 0.5) * 10"
+    },
+    "sigma": {
+        "valve": 600
+    },
+    "teams": {
+        "FURIA": {
+            "seed": 1,
+            "valve": 2008,
+            "hltv": 936
+        },
+        "Team Vitality": {
+            "seed": 2,
+            "valve": 1888,
+            "hltv": 934
+        },
+        "Team Falcons": {
+            "seed": 3,
+            "valve": 1923,
+            "hltv": 703
+        },
+        "The MongolZ": {
+            "seed": 4,
+            "valve": 1763,
+            "hltv": 396
+        },
+        "MOUZ": {
+            "seed": 5,
+            "valve": 1808,
+            "hltv": 537
+        },
+        "Team Spirit": {
+            "seed": 6,
+            "valve": 1716,
+            "hltv": 355
+        },
+        "G2 Esports": {
+            "seed": 7,
+            "valve": 1695,
+            "hltv": 286
+        },
+        "paiN Gaming": {
+            "seed": 8,
+            "valve": 1589,
+            "hltv": 219
+        },
+        "Natus Vincere": {
+            "seed": 9,
+            "valve": 1746,
+            "hltv": 288
+        },
+        "FaZe Clan": {
+            "seed": 10,
+            "valve": 1617,
+            "hltv": 193
+        },
+        "B8": {
+            "seed": 11,
+            "valve": 1656,
+            "hltv": 94
+        },
+        "Imperial Esports": {
+            "seed": 12,
+            "valve": 1401,
+            "hltv": 37
+        },
+        "PARIVISION": {
+            "seed": 13,
+            "valve": 1591,
+            "hltv": 68
+        },
+        "Team Liquid": {
+            "seed": 14,
+            "valve": 1695,
+            "hltv": 150
+        },
+        "Passion UA": {
+            "seed": 15,
+            "valve": 1444,
+            "hltv": 80
+        },
+        "3DMAX": {
+            "seed": 16,
+            "valve": 1603,
+            "hltv": 181
+        }
+    }
+}
