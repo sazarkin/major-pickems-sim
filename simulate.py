@@ -350,7 +350,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-k", type=int, default=cpu_count(), help="number of cores to use"
     )
-    parser.add_argument("-p", type=int, default=1, help="number of predictions to run")
+    parser.add_argument(
+        "-p", type=int, default=1000, help="number of predictions to run"
+    )
     parser.add_argument("-s", type=int, default=0, help="random seed")
     args = parser.parse_args()
 
