@@ -7,6 +7,115 @@ import (
 
 // TestBudapest2025Stage2 replicates the exact Swiss bracket from the
 // Budapest 2025 Stage 2 tournament using fixed probabilities.
+func TestBudapest2025Stage1(t *testing.T) {
+	// Teams with their actual seeds from Budapest 2025 Stage 1
+	teams := []*Team{
+		{Name: "Legacy", Seed: 1, Rating: []int{1500}},
+		{Name: "FaZe Clan", Seed: 2, Rating: []int{1500}},
+		{Name: "B8", Seed: 3, Rating: []int{1500}},
+		{Name: "GamerLegion", Seed: 4, Rating: []int{1500}},
+		{Name: "Fnatic", Seed: 5, Rating: []int{1500}},
+		{Name: "PARIVISION", Seed: 6, Rating: []int{1500}},
+		{Name: "Ninjas in Pyjamas", Seed: 7, Rating: []int{1500}},
+		{Name: "Imperial Esports", Seed: 8, Rating: []int{1500}},
+		{Name: "FlyQuest", Seed: 9, Rating: []int{1500}},
+		{Name: "Lynn Vision Gaming", Seed: 10, Rating: []int{1500}},
+		{Name: "M80", Seed: 11, Rating: []int{1500}},
+		{Name: "Fluxo", Seed: 12, Rating: []int{1500}},
+		{Name: "RED Canids", Seed: 13, Rating: []int{1500}},
+		{Name: "The Huns Esports", Seed: 14, Rating: []int{1500}},
+		{Name: "NRG", Seed: 15, Rating: []int{1500}},
+		{Name: "Rare Atom", Seed: 16, Rating: []int{1500}},
+	}
+
+	sigma := []int{200}
+	rng := rand.New(rand.NewSource(42))
+	ss := NewSwissSystem(teams, sigma, rng)
+
+	// Set probabilities to match actual results
+	// Round 1
+	ss.SetProbBySeed(1, 9, 0.0)  // Legacy loses to FlyQuest (actual: 10-13)
+	ss.SetProbBySeed(2, 10, 1.0) // FaZe beats Lynn Vision
+	ss.SetProbBySeed(3, 11, 0.0) // B8 loses to M80
+	ss.SetProbBySeed(4, 12, 0.0) // GamerLegion loses to Fluxo
+	ss.SetProbBySeed(5, 13, 1.0) // Fnatic beats RED Canids
+	ss.SetProbBySeed(6, 14, 1.0) // PARIVISION beats The Huns
+	ss.SetProbBySeed(7, 15, 0.0) // NiP loses to NRG
+	ss.SetProbBySeed(8, 16, 1.0) // Imperial beats Rare Atom
+
+	// Round 2
+	ss.SetProbBySeed(2, 15, 0.0) // FaZe loses to NRG
+	ss.SetProbBySeed(5, 12, 0.0) // Fnatic loses to Fluxo
+	ss.SetProbBySeed(6, 11, 0.0) // PARIVISION loses to M80
+	ss.SetProbBySeed(8, 9, 0.0)  // Imperial loses to FlyQuest
+	ss.SetProbBySeed(1, 16, 1.0) // Legacy beats Rare Atom
+	ss.SetProbBySeed(3, 14, 1.0) // B8 beats The Huns
+	ss.SetProbBySeed(4, 13, 0.0) // GamerLegion loses to RED Canids
+	ss.SetProbBySeed(7, 10, 1.0) // NiP beats Lynn Vision
+
+	// Round 3
+	// 2-0 pool (Bo3)
+	ss.SetProbBySeed(9, 12, 1.0)  // FlyQuest beats Fluxo
+	ss.SetProbBySeed(11, 15, 1.0) // M80 beats NRG
+	// 1-1 pool (Bo1)
+	ss.SetProbBySeed(5, 8, 1.0)  // Fnatic beats Imperial
+	ss.SetProbBySeed(1, 13, 1.0) // Legacy beats RED Canids
+	ss.SetProbBySeed(2, 7, 0.0)  // FaZe loses to NiP
+	ss.SetProbBySeed(3, 6, 1.0)  // B8 beats PARIVISION
+	// 0-2 pool (Bo3)
+	ss.SetProbBySeed(4, 16, 1.0)  // GamerLegion beats Rare Atom
+	ss.SetProbBySeed(10, 14, 0.0) // Lynn Vision loses to The Huns
+
+	// Round 4
+	// 3-0 Qualified: FlyQuest, M80 are already qualified
+	// 2-1 pool (Bo3)
+	ss.SetProbBySeed(12, 7, 0.0) // Fluxo loses to NiP
+	ss.SetProbBySeed(15, 5, 0.0) // NRG loses to Fnatic
+	ss.SetProbBySeed(3, 1, 1.0)  // B8 beats Legacy
+	// 1-2 pool (Bo3)
+	ss.SetProbBySeed(6, 4, 1.0)  // PARIVISION beats GamerLegion
+	ss.SetProbBySeed(8, 14, 1.0) // Imperial beats The Huns
+	ss.SetProbBySeed(13, 2, 0.0) // RED Canids loses to FaZe
+
+	// Round 5
+	// 3-1 to qualify: B8, Fnatic, NiP are already qualified
+	// 2-2 pool (Bo3) - Qualification matches
+	ss.SetProbBySeed(15, 8, 0.0) // NRG loses to Imperial
+	ss.SetProbBySeed(12, 2, 0.0) // Fluxo loses to FaZe
+	ss.SetProbBySeed(6, 1, 1.0)  // PARIVISION beats Legacy (to match final standings: Legacy 2-3, PARIVISION 3-2)
+
+	// Run the tournament
+	ss.SimulateTournament()
+
+	// Check final records
+	expectedWins := map[string]int{
+		"M80":                3,
+		"FlyQuest":           3,
+		"B8":                 3,
+		"Fnatic":             3,
+		"Ninjas in Pyjamas":  3,
+		"PARIVISION":         3,
+		"Imperial Esports":   3,
+		"FaZe Clan":          3,
+		"NRG":                2,
+		"Fluxo":              2,
+		"Legacy":             2,
+		"The Huns Esports":   1,
+		"RED Canids":         1,
+		"GamerLegion":        1,
+		"Lynn Vision Gaming": 0,
+		"Rare Atom":          0,
+	}
+
+	for _, team := range teams {
+		rec := ss.Records[team.Seed]
+		expected := expectedWins[team.Name]
+		if rec.Wins != expected {
+			t.Errorf("Team %s: expected %d wins, got %d (losses: %d)", team.Name, expected, rec.Wins, rec.Losses)
+		}
+	}
+}
+
 func TestBudapest2025Stage2(t *testing.T) {
 	// Teams with their actual seeds (names for reference only)
 	teams := []*Team{
