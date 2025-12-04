@@ -57,9 +57,11 @@ type Simulation struct {
 	Teams   []*Team
 	TeamMap map[string]*Team
 	Prob    [][]float64
+	baseRng *rand.Rand
+	rngMu   sync.Mutex
 }
 
-func NewSimulation(filepath string) (*Simulation, error) {
+func NewSimulation(filepath string, rng *rand.Rand) (*Simulation, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -117,7 +119,7 @@ func NewSimulation(filepath string) (*Simulation, error) {
 	limit := maxSeed + 1
 	prob := ComputeProbabilities(teams, sigma, limit)
 
-	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap, Prob: prob}, nil
+	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap, Prob: prob, baseRng: rng}, nil
 }
 
 type BatchResult struct {
@@ -158,10 +160,12 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 	}
 	success := make([]int, len(predictions))
 
-	// Create a local random source for this batch
-	localRand := rand.New(rand.NewSource(time.Now().UnixNano() + int64(n)))
+	// Create a deterministic random source for this batch using simulation's baseRng
+	sim.rngMu.Lock()
+	seed := sim.baseRng.Int63()
+	sim.rngMu.Unlock()
 	// single rng for this batch's iterations
-	rng := rand.New(rand.NewSource(localRand.Int63()))
+	rng := rand.New(rand.NewSource(seed))
 	// create a single SwissSystem and reuse across iterations
 	ss := NewSwissSystem(teams, sim.Sigma, rng, sim.Prob)
 
@@ -242,33 +246,6 @@ func (sim *Simulation) Run(n, k int, predictions []map[Category][]int) (map[*Tea
 	return combinedResults, percentages
 }
 
-func hashPrediction(pred map[Category][]int) uint64 {
-	g1 := append([]int{}, pred[Cat3_0]...)
-	sort.Ints(g1)
-	g2 := append([]int{}, pred[CatAdv]...)
-	sort.Ints(g2)
-	g3 := append([]int{}, pred[Cat0_3]...)
-	sort.Ints(g3)
-	// Use a fixed-size buffer for hashing
-	var h uint64
-	for i, s := range g1 {
-		h ^= uint64(s) << (i * 4)
-	}
-	for i, s := range g2 {
-		h ^= uint64(s) << ((i + 2) * 4)
-	}
-	for i, s := range g3 {
-		h ^= uint64(s) << ((i + 8) * 4)
-	}
-	// Mix the bits for better distribution
-	h ^= h >> 33
-	h *= 0xff51afd7ed558ccd
-	h ^= h >> 33
-	h *= 0xc4ceb9fe1a85ec53
-	h ^= h >> 33
-	return h
-}
-
 func main() {
 	var file string
 	var n, k, p, s int
@@ -305,7 +282,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Set up a master random source for generating seeds
 	var masterRand *rand.Rand
 	if s != 0 {
 		masterRand = rand.New(rand.NewSource(int64(s)))
@@ -313,7 +289,7 @@ func main() {
 		masterRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 
-	sim, err := NewSimulation(file)
+	sim, err := NewSimulation(file, masterRand)
 	if err != nil {
 		panic(err)
 	}
@@ -325,31 +301,21 @@ func main() {
 		seed2Name[t.Seed] = t.Name
 	}
 
-	predictions := make([]map[Category][]int, 0, p)
-	hashes := make(map[uint64]bool)
+	// Generate all partitions of teams into categories (2,6,2,6)
+	groupSizes := []int{2, 6, 2, 6}
+	partitions := generateAllPartitions(teamSeeds, groupSizes, p)
 
-	for i := 0; i < p; i++ {
-		for {
-			shuffled := make([]int, len(teamSeeds))
-			copy(shuffled, teamSeeds)
-			// Use masterRand to shuffle
-			masterRand.Shuffle(len(shuffled), func(i, j int) {
-				shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-			})
-			pred := map[Category][]int{
-				Cat3_0: shuffled[:2],
-				CatAdv: shuffled[2:8],
-				Cat0_3: shuffled[8:10],
-			}
-			h := hashPrediction(pred)
-			if !hashes[h] {
-				hashes[h] = true
-				predictions = append(predictions, pred)
-				break
-			}
+	predictions := make([]map[Category][]int, 0, len(partitions))
+	for _, part := range partitions {
+		pred := map[Category][]int{
+			Cat3_0: part[0],
+			CatAdv: part[1],
+			Cat0_3: part[2],
 		}
+		predictions = append(predictions, pred)
 	}
 
+	fmt.Printf("Simulating %d tournaments and testing %d predictions...\n", n, len(predictions))
 	start := time.Now()
 	results, scores := sim.Run(n, k, predictions)
 	_ = results // keep for potential future use
@@ -368,16 +334,11 @@ func main() {
 		return psList[i].score > psList[j].score
 	})
 
+	fmt.Printf("\nTop 5 Predictions:\n")
+	fmt.Println("------------------")
 	for idx := 0; idx < 5 && idx < len(psList); idx++ {
 		ps := psList[idx]
 		fmt.Printf("Percent of success: %.2f%%\n", ps.score)
-		h := hashPrediction(ps.pred)
-		hStr := fmt.Sprintf("%x", h)
-		if len(hStr) >= 5 {
-			fmt.Printf("%s\n", hStr[len(hStr)-5:])
-		} else {
-			fmt.Printf("%s\n", hStr)
-		}
 		orderedPreds := []Category{Cat3_0, CatAdv, Cat0_3}
 		for _, key := range orderedPreds {
 			val := ps.pred[key]
@@ -385,7 +346,8 @@ func main() {
 			for i, seed := range val {
 				names[i] = seed2Name[seed]
 			}
-			fmt.Printf("'%s': %s\n", key, strings.Join(names, ", "))
+			keyWithDoubleColon := key.String() + ":"
+			fmt.Printf("%-11s %s\n", keyWithDoubleColon, strings.Join(names, ", "))
 		}
 		fmt.Println()
 	}
