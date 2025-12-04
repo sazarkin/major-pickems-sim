@@ -35,6 +35,8 @@ func (c Category) String() string {
 	return "unknown"
 }
 
+const requiredCorrectPicks = 5 // by the rules, need at least 5 correct picks to be successful
+
 type Team struct {
 	Name   string
 	Seed   int
@@ -174,9 +176,10 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 				if rec.Losses == 0 {
 					masks[0] |= 1 << uint(t.Seed)
 				} else {
+					// rec.Losses == 1 or 2
 					masks[1] |= 1 << uint(t.Seed)
 				}
-			} else if rec.Losses == 3 {
+			} else if rec.Losses == 3 && rec.Wins == 0 {
 				masks[2] |= 1 << uint(t.Seed)
 			}
 		}
@@ -185,7 +188,7 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 			score := bits.OnesCount64(masks[0]&pm.perfectMask) +
 				bits.OnesCount64(masks[1]&pm.advanceMask) +
 				bits.OnesCount64(masks[2]&pm.zeroMask)
-			if score >= 6 {
+			if score >= requiredCorrectPicks {
 				success[idx]++
 			}
 		}
