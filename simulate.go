@@ -114,7 +114,7 @@ func NewSimulation(filepath string) (*Simulation, error) {
 	}
 	limit := maxSeed + 1
 	prob := ComputeProbabilities(teams, sigma, limit)
-	
+
 	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap, Prob: prob}, nil
 }
 
@@ -375,7 +375,9 @@ func main() {
 		} else {
 			fmt.Printf("%s\n", hStr)
 		}
-		for key, val := range ps.pred {
+		orderedPreds := []Category{Cat3_0, CatAdv, Cat0_3}
+		for _, key := range orderedPreds {
+			val := ps.pred[key]
 			names := make([]string, len(val))
 			for i, seed := range val {
 				names[i] = seed2Name[seed]
