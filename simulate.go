@@ -82,6 +82,13 @@ func readTeamsData(filepath string) ([]*Team, error) {
 	return teams, nil
 }
 
+// SwissSystemInterface defines the methods needed from a Swiss system
+type SwissSystemInterface interface {
+	Reset()
+	SimulateTournament()
+	Records() []*Record
+}
+
 type Simulation struct {
 	Sigma   []int
 	Teams   []*Team
@@ -89,9 +96,18 @@ type Simulation struct {
 	Prob    [][]float64
 	baseRng *rand.Rand
 	rngMu   sync.Mutex
+	// swissFactory creates a new SwissSystemInterface instance
+	swissFactory func(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) SwissSystemInterface
 }
 
 func NewSimulation(valveSigma int, teams []*Team, rng *rand.Rand) (*Simulation, error) {
+	return NewSimulationWithFactory(valveSigma, teams, rng, func(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) SwissSystemInterface {
+		return NewSwissSystem(teams, sigma, rng, prob)
+	})
+}
+
+func NewSimulationWithFactory(valveSigma int, teams []*Team, rng *rand.Rand,
+	factory func(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) SwissSystemInterface) (*Simulation, error) {
 	sigma := []int{valveSigma}
 	teamMap := make(map[string]*Team)
 	for _, team := range teams {
@@ -114,7 +130,20 @@ func NewSimulation(valveSigma int, teams []*Team, rng *rand.Rand) (*Simulation, 
 	limit := maxSeed + 1
 	prob := ComputeProbabilities(teams, sigma, limit)
 
-	return &Simulation{Sigma: sigma, Teams: teams, TeamMap: teamMap, Prob: prob, baseRng: rng}, nil
+	if factory == nil {
+		factory = func(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) SwissSystemInterface {
+			return NewSwissSystem(teams, sigma, rng, prob)
+		}
+	}
+
+	return &Simulation{
+		Sigma:        sigma,
+		Teams:        teams,
+		TeamMap:      teamMap,
+		Prob:         prob,
+		baseRng:      rng,
+		swissFactory: factory,
+	}, nil
 }
 
 type BatchResult struct {
@@ -162,7 +191,7 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 	// single rng for this batch's iterations
 	rng := rand.New(rand.NewSource(seed))
 	// create a single SwissSystem and reuse across iterations
-	ss := NewSwissSystem(teams, sim.Sigma, rng, sim.Prob)
+	ss := sim.swissFactory(teams, sim.Sigma, rng, sim.Prob)
 
 	for range n {
 		ss.Reset()
@@ -170,7 +199,7 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 
 		var masks [3]uint64 // 0:3-0, 1:3-1 or 3-2, 2:0-3
 		for _, t := range teams {
-			rec := ss.Records[t.Seed]
+			rec := ss.Records()[t.Seed]
 			if rec.Wins == 3 {
 				if rec.Losses == 0 {
 					masks[0] |= 1 << uint(t.Seed)

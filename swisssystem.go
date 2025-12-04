@@ -10,7 +10,7 @@ import (
 type SwissSystem struct {
 	Sigma     []int
 	Teams     []*Team   // original team list
-	Records   []*Record // indexed by Team.Seed
+	records   []*Record // indexed by Team.Seed
 	Faced     [][]int   // indexed by Team.Seed, holds opponent Seeds
 	Remaining []bool    // indexed by Team.Seed
 	Finished  []bool    // indexed by Team.Seed
@@ -46,7 +46,7 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64
 	ss := &SwissSystem{
 		Sigma:     sigma,
 		Teams:     teams,
-		Records:   records,
+		records:   records,
 		Faced:     faced,
 		Remaining: remaining,
 		Finished:  finished,
@@ -64,8 +64,8 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64
 func (ss *SwissSystem) Reset() {
 	for _, t := range ss.Teams {
 		idx := t.Seed
-		ss.Records[idx].Wins = 0
-		ss.Records[idx].Losses = 0
+		ss.records[idx].Wins = 0
+		ss.records[idx].Losses = 0
 		ss.Faced[idx] = ss.Faced[idx][:0]
 		ss.Remaining[idx] = true
 		ss.Finished[idx] = false
@@ -114,7 +114,7 @@ func ComputeProbabilities(teams []*Team, sigma []int, limit int) [][]float64 {
 func (ss *SwissSystem) CalculateBuchholz(seed int) int {
 	buchholz := 0
 	for _, oppSeed := range ss.Faced[seed] {
-		rec := ss.Records[oppSeed]
+		rec := ss.records[oppSeed]
 		buchholz += rec.Diff()
 	}
 	return buchholz
@@ -123,8 +123,8 @@ func (ss *SwissSystem) CalculateBuchholz(seed int) int {
 func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 	idxA := a.Seed
 	idxB := b.Seed
-	recA := ss.Records[idxA]
-	recB := ss.Records[idxB]
+	recA := ss.records[idxA]
+	recB := ss.records[idxB]
 	isBO3 := recA.Wins == 2 || recA.Losses == 2
 
 	p := ss.prob[idxA][idxB]
@@ -158,7 +158,7 @@ func (ss *SwissSystem) SimulateMatch(a, b *Team) {
 	if isBO3 {
 		for _, t := range []*Team{a, b} {
 			idx := t.Seed
-			r := ss.Records[idx]
+			r := ss.records[idx]
 			if r.Wins == 3 || r.Losses == 3 {
 				ss.Remaining[idx] = false
 				ss.Finished[idx] = true
@@ -296,7 +296,7 @@ func (ss *SwissSystem) SimulateRound() {
 		if !ss.Remaining[t.Seed] {
 			continue
 		}
-		diff := ss.Records[t.Seed].Diff()
+		diff := ss.records[t.Seed].Diff()
 		if diff > 0 {
 			pos = append(pos, t)
 		} else if diff < 0 {
@@ -332,6 +332,10 @@ func (ss *SwissSystem) SimulateNextRound() bool {
 	}
 	ss.SimulateRound()
 	return true
+}
+
+func (ss *SwissSystem) Records() []*Record {
+	return ss.records
 }
 
 func (ss *SwissSystem) SimulateTournament() {

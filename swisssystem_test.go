@@ -117,7 +117,7 @@ func TestBudapest2025Stage1(t *testing.T) {
 	}
 
 	for _, team := range teams {
-		rec := ss.Records[team.Seed]
+		rec := ss.Records()[team.Seed]
 		expected := expectedWins[team.Name]
 		if rec.Wins != expected {
 			t.Errorf("Team %s: expected %d wins, got %d (losses: %d)", team.Name, expected, rec.Wins, rec.Losses)
@@ -244,7 +244,7 @@ func TestBudapest2025Stage2(t *testing.T) {
 	}
 
 	for seed, exp := range expected {
-		rec := ss.Records[seed]
+		rec := ss.Records()[seed]
 		if rec.Wins != exp.wins || rec.Losses != exp.losses {
 			t.Errorf("seed %d record = %d-%d, want %d-%d", seed, rec.Wins, rec.Losses, exp.wins, exp.losses)
 		}
