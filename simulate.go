@@ -52,16 +52,7 @@ type Record struct {
 
 func (r *Record) Diff() int { return r.Wins - r.Losses }
 
-type Simulation struct {
-	Sigma   []int
-	Teams   []*Team
-	TeamMap map[string]*Team
-	Prob    [][]float64
-	baseRng *rand.Rand
-	rngMu   sync.Mutex
-}
-
-func NewSimulation(filepath string, rng *rand.Rand) (*Simulation, error) {
+func readTeamsData(filepath string) ([]*Team, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -74,17 +65,6 @@ func NewSimulation(filepath string, rng *rand.Rand) (*Simulation, error) {
 		return nil, err
 	}
 
-	sigmaMap := data["sigma"].(map[string]any)
-	sigmaKeys := make([]string, 0, len(sigmaMap))
-	for k := range sigmaMap {
-		sigmaKeys = append(sigmaKeys, k)
-	}
-	sort.Strings(sigmaKeys)
-	sigma := make([]int, len(sigmaKeys))
-	for i, k := range sigmaKeys {
-		sigma[i] = int(sigmaMap[k].(float64))
-	}
-
 	teamsData := data["teams"].(map[string]any)
 
 	teams := make([]*Team, 0, len(teamsData))
@@ -93,14 +73,29 @@ func NewSimulation(filepath string, rng *rand.Rand) (*Simulation, error) {
 	for name, t := range teamsData {
 		tmap := t.(map[string]any)
 		seed := int(tmap["seed"].(float64))
-		ratings := make([]int, len(sigmaKeys))
-		for i, sysKey := range sigmaKeys {
-			ratingVal := tmap[sysKey].(float64)
-			ratings[i] = int(ratingVal)
-		}
-		team := &Team{Name: name, Seed: seed, Rating: ratings}
+		valveRating := int(tmap["valve"].(float64))
+		team := &Team{Name: name, Seed: seed, Rating: []int{valveRating}}
 		teams = append(teams, team)
 		teamMap[name] = team
+	}
+
+	return teams, nil
+}
+
+type Simulation struct {
+	Sigma   []int
+	Teams   []*Team
+	TeamMap map[string]*Team
+	Prob    [][]float64
+	baseRng *rand.Rand
+	rngMu   sync.Mutex
+}
+
+func NewSimulation(valveSigma int, teams []*Team, rng *rand.Rand) (*Simulation, error) {
+	sigma := []int{valveSigma}
+	teamMap := make(map[string]*Team)
+	for _, team := range teams {
+		teamMap[team.Name] = team
 	}
 
 	// Sort teams by seed for deterministic order
@@ -179,12 +174,15 @@ func (sim *Simulation) Batch(n int, predictions []map[Category][]int) (*BatchRes
 			if rec.Wins == 3 {
 				if rec.Losses == 0 {
 					masks[0] |= 1 << uint(t.Seed)
+					results[t][Cat3_0]++
 				} else {
 					// rec.Losses == 1 or 2
 					masks[1] |= 1 << uint(t.Seed)
+					results[t][CatAdv]++
 				}
 			} else if rec.Losses == 3 && rec.Wins == 0 {
 				masks[2] |= 1 << uint(t.Seed)
+				results[t][Cat0_3]++
 			}
 		}
 
@@ -248,7 +246,7 @@ func (sim *Simulation) Run(n, k int, predictions []map[Category][]int) (map[*Tea
 
 func main() {
 	var file string
-	var n, k, p, s int
+	var n, k, p, s, sigma int
 	var profilePath string
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s -f <data.json> [options]\n\nOptions:\n", os.Args[0])
@@ -259,6 +257,7 @@ func main() {
 	flag.IntVar(&k, "k", runtime.NumCPU(), "number of cores to use")
 	flag.IntVar(&p, "p", 1_000, "number of predictions to run")
 	flag.IntVar(&s, "s", 0, "random seed")
+	flag.IntVar(&sigma, "sigma", 600, "sigma value for valve rating")
 	flag.StringVar(&profilePath, "profile", "", "write cpu profile to file")
 	flag.Parse()
 
@@ -289,7 +288,12 @@ func main() {
 		masterRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 
-	sim, err := NewSimulation(file, masterRand)
+	teams, err := readTeamsData(file)
+	if err != nil {
+		panic(err)
+	}
+
+	sim, err := NewSimulation(sigma, teams, masterRand)
 	if err != nil {
 		panic(err)
 	}
