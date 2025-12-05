@@ -277,6 +277,7 @@ func main() {
 	var file string
 	var n, k, p, s, sigma int
 	var profilePath string
+	var useColor bool
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s -f <data.json> [options]\n\nOptions:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -288,11 +289,56 @@ func main() {
 	flag.IntVar(&s, "s", 0, "random seed")
 	flag.IntVar(&sigma, "sigma", 600, "sigma value for valve rating")
 	flag.StringVar(&profilePath, "profile", "", "write cpu profile to file")
+	flag.BoolVar(&useColor, "color", true, "enable colored output")
 	flag.Parse()
 
 	if file == "" {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	// Color codes
+	const (
+		colorReset        = "\033[0m"
+		colorRed          = "\033[31m"
+		colorGreen        = "\033[32m"
+		colorYellow       = "\033[33m"
+		colorBlue         = "\033[34m"
+		colorPurple       = "\033[35m"
+		colorCyan         = "\033[36m"
+		colorWhite        = "\033[37m"
+		colorBrightRed    = "\033[91m"
+		colorBrightGreen  = "\033[92m"
+		colorBrightYellow = "\033[93m"
+		colorBrightBlue   = "\033[94m"
+		colorBrightPurple = "\033[95m"
+		colorBrightCyan   = "\033[96m"
+	)
+	// All available colors - now 10 colors
+	allColors := []string{
+		colorRed,
+		colorGreen,
+		colorYellow,
+		colorBlue,
+		colorPurple,
+		colorCyan,
+		colorWhite,
+		colorBrightRed,
+		colorBrightGreen,
+		colorBrightBlue,
+	}
+	// Helper function to colorize team name
+	colorizeTeam := func(teamName string, seed int) string {
+		if !useColor {
+			return teamName
+		}
+		// Ensure we have a valid index
+		numColors := len(allColors)
+		colorIdx := (seed - 1) % numColors
+		if colorIdx < 0 {
+			colorIdx = 0
+		}
+		return allColors[colorIdx] + teamName + colorReset
 	}
 
 	// CPU profiling
@@ -334,9 +380,15 @@ func main() {
 		seed2Name[t.Seed] = t.Name
 	}
 
+	// Shuffle team seeds to ensure randomness in partitions
+	teamSeedsShuffled := make([]int, len(teamSeeds))
+	copy(teamSeedsShuffled, teamSeeds)
+	masterRand.Shuffle(len(teamSeedsShuffled), func(i, j int) {
+		teamSeedsShuffled[i], teamSeedsShuffled[j] = teamSeedsShuffled[j], teamSeedsShuffled[i]
+	})
 	// Generate all partitions of teams into categories (2,6,2,6)
 	groupSizes := []int{2, 6, 2, 6}
-	partitions := generateAllPartitions(teamSeeds, groupSizes, p)
+	partitions := generateAllPartitions(teamSeedsShuffled, groupSizes, p)
 
 	predictions := make([]map[Category][]int, 0, len(partitions))
 	for _, part := range partitions {
@@ -377,7 +429,12 @@ func main() {
 			val := ps.pred[key]
 			names := make([]string, len(val))
 			for i, seed := range val {
-				names[i] = seed2Name[seed]
+				teamName := seed2Name[seed]
+				if useColor {
+					names[i] = colorizeTeam(teamName, seed)
+				} else {
+					names[i] = teamName
+				}
 			}
 			keyWithDoubleColon := key.String() + ":"
 			fmt.Printf("%-11s %s\n", keyWithDoubleColon, strings.Join(names, ", "))
