@@ -8,15 +8,16 @@ import (
 )
 
 type SwissSystem struct {
-	Sigma     []int
-	Teams     []*Team   // original team list
-	records   []*Record // indexed by Team.Seed
-	Faced     [][]int   // indexed by Team.Seed, holds opponent Seeds
-	Remaining []bool    // indexed by Team.Seed
-	Finished  []bool    // indexed by Team.Seed
-	Round     int       // current round number (1‑based)
-	rng       *rand.Rand
-	prob      [][]float64 // indexed by [SeedA][SeedB]
+	Sigma           []int
+	Teams           []*Team   // original team list
+	records         []*Record // indexed by Team.Seed
+	Faced           [][]int   // indexed by Team.Seed, holds opponent Seeds
+	Remaining       []bool    // indexed by Team.Seed
+	Finished        []bool    // indexed by Team.Seed
+	Round           int       // current round number (1‑based)
+	rng             *rand.Rand
+	prob            [][]float64 // indexed by [SeedA][SeedB]
+	CurrentBuchholz []int       // stores Buchholz scores for current round
 }
 
 func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64) *SwissSystem {
@@ -44,14 +45,15 @@ func NewSwissSystem(teams []*Team, sigma []int, rng *rand.Rand, prob [][]float64
 	}
 
 	ss := &SwissSystem{
-		Sigma:     sigma,
-		Teams:     teams,
-		records:   records,
-		Faced:     faced,
-		Remaining: remaining,
-		Finished:  finished,
-		Round:     0,
-		rng:       rng,
+		Sigma:           sigma,
+		Teams:           teams,
+		records:         records,
+		Faced:           faced,
+		Remaining:       remaining,
+		Finished:        finished,
+		Round:           0,
+		rng:             rng,
+		CurrentBuchholz: nil,
 	}
 	if prob != nil {
 		ss.prob = prob
@@ -71,6 +73,7 @@ func (ss *SwissSystem) Reset() {
 		ss.Finished[idx] = false
 	}
 	ss.Round = 0
+	ss.CurrentBuchholz = nil
 }
 
 func winProb(a, b *Team, sigma []int) float64 {
@@ -205,8 +208,13 @@ func (ss *SwissSystem) pairGroup(group []*Team) []pair {
 		seedI := group[i].Seed
 		seedJ := group[j].Seed
 
-		buchI := ss.CalculateBuchholz(seedI)
-		buchJ := ss.CalculateBuchholz(seedJ)
+		if ss.CurrentBuchholz == nil {
+			panic("CurrentBuchholz should be calculated before pairing")
+		}
+		// Lookup Buchholz scores from current round
+		buchI := ss.CurrentBuchholz[seedI]
+		buchJ := ss.CurrentBuchholz[seedJ]
+
 		if buchI != buchJ {
 			return buchI > buchJ // Higher Buchholz first
 		}
@@ -305,6 +313,13 @@ func (ss *SwissSystem) SimulateRound() {
 			even = append(even, t)
 		}
 	}
+
+	// Calculate and store Buchholz scores for this round
+	roundBuchholz := make([]int, len(ss.records))
+	for seed := range ss.records {
+		roundBuchholz[seed] = ss.CalculateBuchholz(seed)
+	}
+	ss.CurrentBuchholz = roundBuchholz
 
 	// Collect all pairs for the round first, BEFORE simulating any matches.
 	// This ensures Buchholz scores are calculated based on the state at the START of the round.

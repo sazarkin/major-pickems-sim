@@ -423,7 +423,7 @@ func main() {
 	fmt.Println("------------------")
 	for idx := 0; idx < 5 && idx < len(psList); idx++ {
 		ps := psList[idx]
-		fmt.Printf("Percent of success: %.2f%%\n", ps.score)
+		fmt.Printf("Success:    %.2f%%\n", ps.score)
 		orderedPreds := []Category{Cat3_0, CatAdv, Cat0_3}
 		for _, key := range orderedPreds {
 			val := ps.pred[key]
